@@ -1,1 +1,0 @@
-This is the ticket where we dicide who will take which part of the smaaaaal proj.
