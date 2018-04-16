@@ -66,10 +66,6 @@ func doMap(
 
 	splitResults := make(map[int][]KeyValue)
 
-	for i := 0; i < nReduce; i++ {
-		splitResults[i] = []KeyValue{}
-	}
-
 	for _, keyValuePair := range mapResults {
 		reduceIndex := int(math.Mod(float64(ihash(keyValuePair.Key)), float64(nReduce)))
 		splitResults[reduceIndex] = append(splitResults[reduceIndex], keyValuePair)
