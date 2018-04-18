@@ -36,6 +36,7 @@ type Master struct {
 func (mr *Master) Register(args *RegisterArgs, _ *struct{}) error {
 	mr.Lock()
 	defer mr.Unlock()
+	fmt.Printf("Register: worker %s\n", args.Worker)
 	debug("Register: worker %s\n", args.Worker)
 	mr.workers = append(mr.workers, args.Worker)
 

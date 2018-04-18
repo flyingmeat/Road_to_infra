@@ -3,6 +3,7 @@ package mapreduce
 import (
 	"encoding/json"
 	"os"
+	"sort"
 )
 
 func doReduce(
@@ -52,6 +53,7 @@ func doReduce(
 
 	keyIntermediateValues := make(map[string][]string)
 	keyValues := []KeyValue{}
+
 	for m := 0; m < nMap; m++ {
 		readIntermediateFile(reduceName(jobName, m, reduceTask), keyIntermediateValues)
 	}
@@ -60,6 +62,9 @@ func doReduce(
 		keyValues = append(keyValues, KeyValue{key, reduceF(key, values)})
 	}
 
+	sort.Slice(keyValues, func(i, j int) bool {
+		return keyValues[i].Key < keyValues[j].Key
+	})
 
 	writeToOutputFile(outFile, keyValues)
 }
