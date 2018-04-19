@@ -35,21 +35,37 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
 	//
 
 	var workersPool sync.WaitGroup
+	var taskLock sync.Mutex
 
-	taskNumRemain := ntasks
-	for taskNumRemain > 0 {
+	undoTask := ntasks
+	taskRemain := make(chan int, ntasks)
+	for taskNum := 0; taskNum < ntasks; taskNum++ {
+		taskRemain <- taskNum
+	}
+
+	for currentTaskNum := range taskRemain {
 		worker := <- registerChan
-		taskNumRemain--
 		workersPool.Add(1)
-		
-		go func(taskNum int) {
-			call(worker, "Worker.DoTask", DoTaskArgs{jobName, mapFiles[taskNum], phase, taskNum, n_other}, nil)
-
+		go func(taskNum int, taskRemain chan int) {
+			ok := call(worker, "Worker.DoTask", DoTaskArgs{jobName, mapFiles[taskNum], phase, taskNum, n_other}, nil)
+			
+			defer workersPool.Done()
 			// register back to master
 			go func() {registerChan <- worker}()
 
-			defer workersPool.Done()
-		}(taskNumRemain)
+			if ok == false {
+				taskRemain <- taskNum
+			} else {
+				taskLock.Lock()
+				undoTask--
+				taskLock.Unlock()
+				// if no task remain, should close task channel
+				if undoTask == 0 {
+					close(taskRemain)
+				}
+			}
+
+		}(currentTaskNum, taskRemain)
 	}
 	
 	workersPool.Wait()
