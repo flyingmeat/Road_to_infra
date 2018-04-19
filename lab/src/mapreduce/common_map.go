@@ -62,7 +62,7 @@ func doMap(
 	checkError(err)
 
 	textContent := string(fileByte)
-	mapResults := mapF(jobName, textContent)
+	mapResults := mapF(inFile, textContent)
 
 	splitResults := make(map[int][]KeyValue)
 
