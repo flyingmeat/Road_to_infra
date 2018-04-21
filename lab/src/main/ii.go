@@ -5,6 +5,8 @@ import (
 	"mapreduce"
 	"os"
 	"regexp"
+	"sort"
+	"strings"
 	"strconv"
 )
 
@@ -15,10 +17,10 @@ import (
 func mapF(document string, value string) (res []mapreduce.KeyValue) {
 	// Your code here (Part V).
 	result := []mapreduce.KeyValue{}
-	re := regexp.MustCompile("\\W+")
+	re, _ := regexp.Compile("([[:alpha:]])+")
 
-	for _, word := range re.Split(value, -1) {
-    	kv := mapreduce.KeyValue{word, "1"}
+	for _, word := range re.FindAllString(value, -1) {
+    	kv := mapreduce.KeyValue{word, document}
     	result = append(result, kv)
   	}
   
@@ -30,13 +32,21 @@ func mapF(document string, value string) (res []mapreduce.KeyValue) {
 // should be a single output value for that key.
 func reduceF(key string, values []string) string {
 	// Your code here (Part V).
-	totalCount := 0
+	// remove duplicated values
+	uniqueValues := make(map[string]bool)
 	for _, value := range values {
-    	count, _ := strconv.Atoi(value)
-    	totalCount += count
- 	}
+		if _, ok := uniqueValues[value]; !ok {
+			uniqueValues[value] = true
+		}
+	}
 
-	return strconv.Itoa(totalCount)
+	var documents []string
+	for value, _ := range uniqueValues {
+    	documents = append(documents, value)
+ 	}
+ 	
+ 	sort.Strings(documents)
+	return strconv.Itoa(len(documents)) + " " + strings.Join(documents, ",")
 }
 
 // Can be run in 3 ways:

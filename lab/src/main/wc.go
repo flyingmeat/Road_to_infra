@@ -18,9 +18,9 @@ import (
 func mapF(filename string, contents string) []mapreduce.KeyValue {
 	// Your code here (Part II).
 	result := []mapreduce.KeyValue{}
-	re := regexp.MustCompile("\\W+")
+	re, _ := regexp.Compile("([[:alpha:]])+")
 
-	for _, word := range re.Split(contents, -1) {
+	for _, word := range re.FindAllString(contents, -1) {
     	kv := mapreduce.KeyValue{word, "1"}
     	result = append(result, kv)
   	}
