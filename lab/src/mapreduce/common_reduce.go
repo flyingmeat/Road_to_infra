@@ -76,7 +76,7 @@ func doReduce(
 		keys = append(keys, key)
 	}
 
-  	// do reduce to each key
+  	// do reduce to each key and write to result file
 	resultFileName := mergeName(jobName, reduceTask)
 	file, _ := os.Create(resultFileName)
 	enc := json.NewEncoder(file)
