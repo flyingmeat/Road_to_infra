@@ -1,8 +1,8 @@
 package mapreduce
 
 import (
-  "encoding/json"
-  "os"
+	"encoding/json"
+	"os"
 )
 
 func doReduce(
@@ -11,7 +11,7 @@ func doReduce(
 	outFile string, // write the output here
 	nMap int, // the number of map tasks that were run ("M" in the paper)
 	reduceF func(key string, values []string) string,
-) {
+	) {
 	//
 	// doReduce manages one reduce task: it should read the intermediate
 	// files for the task, sort the intermediate key/value pairs by key,
@@ -50,39 +50,39 @@ func doReduce(
 	// Your code here (Part I).
 	//
 
-  // read intermediate files to map<Key, []Value>
-  kvs := make(map[string][]string)
-  for m := 0; m < nMap; m++ {
-    interFileName := reduceName(jobName, m, reduceTask)
-    file, _ := os.Open(interFileName)
-    dec := json.NewDecoder(file)
-    for {
-      kv := KeyValue{}
-      err := dec.Decode(&kv)
-      if err != nil {
-        break
-      }
-      if _, ok := kvs[kv.Key]; !ok {
-        kvs[kv.Key] = []string{}
-      }
-      kvs[kv.Key] = append(kvs[kv.Key], kv.Value)
-    }
-    file.Close()
-  }
+  	// read intermediate files to map<Key, []Value>
+	kvs := make(map[string][]string)
+	for m := 0; m < nMap; m++ {
+		interFileName := reduceName(jobName, m, reduceTask)
+		file, _ := os.Open(interFileName)
+		dec := json.NewDecoder(file)
+		for {
+			kv := KeyValue{}
+			err := dec.Decode(&kv)
+			if err != nil {
+				break
+			}
+			if _, ok := kvs[kv.Key]; !ok {
+				kvs[kv.Key] = []string{}
+			}
+			kvs[kv.Key] = append(kvs[kv.Key], kv.Value)
+		}
+		file.Close()
+	}
 
-  // get all keys
-  keys := []string{}
-  for key := range kvs {
-    keys = append(keys, key)
-  }
+  	// get all keys
+	keys := []string{}
+	for key := range kvs {
+		keys = append(keys, key)
+	}
 
-  // do reduce to each key
-  resultFileName := mergeName(jobName, reduceTask)
-  file, _ := os.Create(resultFileName)
-  enc := json.NewEncoder(file)
-  for _, key := range keys {
-    result := reduceF(key, kvs[key])
-    enc.Encode(KeyValue{key, result})
-  }
-  file.Close()
+  	// do reduce to each key
+	resultFileName := mergeName(jobName, reduceTask)
+	file, _ := os.Create(resultFileName)
+	enc := json.NewEncoder(file)
+	for _, key := range keys {
+		result := reduceF(key, kvs[key])
+		enc.Encode(KeyValue{key, result})
+	}
+	file.Close()
 }

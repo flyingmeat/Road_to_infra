@@ -12,18 +12,18 @@ import "fmt"
 // existing registered workers (if any) and new ones as they register.
 //
 func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, registerChan chan string) {
-	var ntasks int
-	var n_other int // number of inputs (for reduce) or outputs (for map)
-	switch phase {
-	case mapPhase:
-		ntasks = len(mapFiles)
-		n_other = nReduce
-	case reducePhase:
-		ntasks = nReduce
-		n_other = len(mapFiles)
-	}
+    var ntasks int
+    var n_other int // number of inputs (for reduce) or outputs (for map)
+    switch phase {
+    case mapPhase:
+        ntasks = len(mapFiles)
+        n_other = nReduce
+    case reducePhase:
+        ntasks = nReduce
+        n_other = len(mapFiles)
+    }
 
-	fmt.Printf("Schedule: %v %v tasks (%d I/Os)\n", ntasks, phase, n_other)
+    fmt.Printf("Schedule: %v %v tasks (%d I/Os)\n", ntasks, phase, n_other)
 
 	// All ntasks tasks have to be scheduled on workers. Once all tasks
 	// have completed successfully, schedule() should return.
@@ -31,37 +31,42 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
 	// Your code here (Part III, Part IV).
 	//
 
-  // receive task from channel
-  taskChannel := make(chan int, ntasks)
-  for i := 0; i < ntasks; i++ {
-    go func(taskNumber int) {
-      for {
-        var worker string
-        ok := false
+    // send task to workers from register channel
+    taskChannel := make(chan int, ntasks)
+    workerChannel := make(chan string)
+    for i := 0; i < ntasks; i++ {
+        go func(taskNumber int) {
+            for {
+                var worker string
+                ok := false
+                taskArgs := DoTaskArgs {
+                    JobName:       jobName,
+                    File:          mapFiles[taskNumber],
+                    Phase:         phase,
+                    TaskNumber:    taskNumber,
+                    NumOtherPhase: n_other,
+                }
 
-        select {
-          case worker = <- registerChan:
-            taskArgs := DoTaskArgs {
-              JobName: jobName,
-              File: mapFiles[taskNumber],
-              Phase: phase,
-              TaskNumber: taskNumber,
-              NumOtherPhase: n_other,
+                select {
+                case worker = <- registerChan:
+                    ok = call(worker, "Worker.DoTask", taskArgs, nil)
+                case worker = <- workerChannel:
+                    ok = call(worker, "Worker.DoTask", taskArgs, nil)
+                }
+
+                if (ok) {
+                  taskChannel <- taskNumber
+                  workerChannel <- worker
+                  return
+                }
             }
-            ok = call(worker, "Worker.DoTask", taskArgs, nil) 
-        }
-        if (ok) {
-          taskChannel <- taskNumber
-          return
-        }
-      }
-    }(i)
-  }
+        }(i)
+    }
 
-  // send task to channel
-  for i := 0; i < ntasks; i++ {
-    <- taskChannel
-  }
+    // clean up task channel
+    for i := 0; i < ntasks; i++ {
+        <- taskChannel
+    }
 
-	fmt.Printf("Schedule: %v done\n", phase)
+    fmt.Printf("Schedule: %v done\n", phase)
 }

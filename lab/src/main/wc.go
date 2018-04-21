@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"mapreduce"
 	"os"
-  "regexp"
-  "strconv"
+	"regexp"
+	"strconv"
 )
 
 //
@@ -17,15 +17,15 @@ import (
 //
 func mapF(filename string, contents string) []mapreduce.KeyValue {
 	// Your code here (Part II).
-  result := []mapreduce.KeyValue{}
-  re := regexp.MustCompile("\w+")
+	result := []mapreduce.KeyValue{}
+	re := regexp.MustCompile("\\W+")
 
-  for _, word := range re.Split(contents, -1) {
-    kv := mapreduce.KeyValue{word, "1"}
-    result = append(result, kv)
-  }
+	for _, word := range re.Split(contents, -1) {
+    	kv := mapreduce.KeyValue{word, "1"}
+    	result = append(result, kv)
+  	}
   
-  return result
+  	return result
 }
 
 //
@@ -35,13 +35,13 @@ func mapF(filename string, contents string) []mapreduce.KeyValue {
 //
 func reduceF(key string, values []string) string {
 	// Your code here (Part II).
-  totalCount := 0
-  for _, value := range values {
-    count, _ := strconv.Atoi(value)
-    totalCount += count
-  }
+	totalCount := 0
+	for _, value := range values {
+    	count, _ := strconv.Atoi(value)
+    	totalCount += count
+ 	}
 
-  return strconv.Itoa(totalCount)
+	return strconv.Itoa(totalCount)
 }
 
 // Can be run in 3 ways:

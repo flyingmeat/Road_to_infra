@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"log"
 	"os"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -83,6 +84,10 @@ func check(t *testing.T, files []string) {
 	if i != nNumber {
 		t.Fatalf("Expected %d lines in output\n", nNumber)
 	}
+
+	v := reflect.ValueOf(*t)
+	name := v.FieldByName("name")
+	fmt.Printf("===== Test passed: %s =====\n", name)
 }
 
 // Workers report back how many RPCs they have processed in the Shutdown reply.
