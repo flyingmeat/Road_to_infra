@@ -30,5 +30,38 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
 	//
 	// Your code here (Part III, Part IV).
 	//
+
+  // receive task from channel
+  taskChannel := make(chan int, ntasks)
+  for i := 0; i < ntasks; i++ {
+    go func(taskNumber int) {
+      for {
+        var worker string
+        ok := false
+
+        select {
+          case worker = <- registerChan:
+            taskArgs := DoTaskArgs {
+              JobName: jobName,
+              File: mapFiles[taskNumber],
+              Phase: phase,
+              TaskNumber: taskNumber,
+              NumOtherPhase: n_other,
+            }
+            ok = call(worker, "Worker.DoTask", taskArgs, nil) 
+        }
+        if (ok) {
+          taskChannel <- taskNumber
+          return
+        }
+      }
+    }(i)
+  }
+
+  // send task to channel
+  for i := 0; i < ntasks; i++ {
+    <- taskChannel
+  }
+
 	fmt.Printf("Schedule: %v done\n", phase)
 }
