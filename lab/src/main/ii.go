@@ -44,6 +44,7 @@ func removeDuplicate(values []string) []string {
 	result := []string{}
 	for _, value := range values {
 		if _, ok := encountered[value]; !ok {
+			encountered[value] = true
 			result = append(result, value)
 		}
 	}
