@@ -16,7 +16,7 @@ import (
 // key/value pairs, each represented by a mapreduce.KeyValue.
 func mapF(document string, value string) (res []mapreduce.KeyValue) {
 	// Your code here (Part V).
-	rege, _ := regexp.Compile("([a-z]|[A-Z])+")
+	rege, _ := regexp.Compile("([[:alpha:]])+")
 
 	words := rege.FindAllString(value, -1)
 
@@ -44,7 +44,6 @@ func removeDuplicate(values []string) []string {
 	result := []string{}
 	for _, value := range values {
 		if _, ok := encountered[value]; !ok {
-			encountered[value] = true
 			result = append(result, value)
 		}
 	}

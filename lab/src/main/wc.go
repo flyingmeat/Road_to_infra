@@ -17,7 +17,7 @@ import (
 //
 func mapF(filename string, contents string) []mapreduce.KeyValue {
 	// Your code here (Part II).
-	rege, _ := regexp.Compile("([a-z]|[A-Z])+")
+	rege, _ := regexp.Compile("([[:alpha:]])+")
 
 	words := rege.FindAllString(contents, -1)
 

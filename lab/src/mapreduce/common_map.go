@@ -3,7 +3,6 @@ package mapreduce
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"hash/fnv"
 	"io/ioutil"
 	"os"
@@ -67,7 +66,7 @@ func doMap(
 	splitResults := make(map[int][]KeyValue)
 
 	for _, keyValuePair := range mapResults {
-		reduceIndex := int(math.Mod(float64(ihash(keyValuePair.Key)), float64(nReduce)))
+		reduceIndex := ihash(keyValuePair.Key) % nReduce
 		splitResults[reduceIndex] = append(splitResults[reduceIndex], keyValuePair)
 	}
 
