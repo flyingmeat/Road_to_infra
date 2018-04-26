@@ -66,15 +66,20 @@ func doMap(
   	// do map
 	result := mapF(inFile, string(buffer))
 
+	// get shards
+	shards := make(map[int][]KeyValue, len(result))
+	for _, kv := range result {
+		shardNumber := ihash(kv.Key) % nReduce
+		shards[shardNumber] = append(shards[shardNumber], kv)
+	}
+
   	// write result to intermediate files
 	for r := 0; r < nReduce; r++ {
 		interFileName := reduceName(jobName, mapTask, r)
 		file, _ := os.Create(interFileName)
 		enc := json.NewEncoder(file)
-		for _, kv := range result {
-			if ihash(kv.Key) % nReduce == r {
-				enc.Encode(&kv)
-			}
+		for _, kv := range shards[r] {
+			enc.Encode(&kv)
 		}
 		file.Close()
 	}
