@@ -1,5 +1,11 @@
 package mapreduce
 
+import (
+	"encoding/json"
+	"os"
+	"sort"
+)
+
 func doReduce(
 	jobName string, // the name of the whole MapReduce job
 	reduceTask int, // which reduce task this is
@@ -44,4 +50,51 @@ func doReduce(
 	//
 	// Your code here (Part I).
 	//
+
+	keyIntermediateValues := make(map[string][]string)
+	keyValues := []KeyValue{}
+
+	for m := 0; m < nMap; m++ {
+		readIntermediateFile(reduceName(jobName, m, reduceTask), keyIntermediateValues)
+	}
+
+	for key, values := range keyIntermediateValues {
+		keyValues = append(keyValues, KeyValue{key, reduceF(key, values)})
+	}
+
+	sort.Slice(keyValues, func(i, j int) bool {
+		return keyValues[i].Key < keyValues[j].Key
+	})
+
+	writeToOutputFile(outFile, keyValues)
+}
+
+func readIntermediateFile(fileName string, keyIntermediateValues map[string][]string) {
+	intermediateFile, err := os.Open(fileName)
+	checkError(err)
+
+	defer intermediateFile.Close()
+
+	decoder := json.NewDecoder(intermediateFile)
+
+	for decoder.More() {
+		var keyValuePair KeyValue
+		err := decoder.Decode(&keyValuePair)
+		checkError(err)
+		keyIntermediateValues[keyValuePair.Key] =
+			append(keyIntermediateValues[keyValuePair.Key], keyValuePair.Value)
+	}
+}
+
+func writeToOutputFile(fileName string, keyValues []KeyValue) {
+	outputFile, err := os.Create(fileName)
+	checkError(err)
+
+	defer outputFile.Close()
+
+	encoder := json.NewEncoder(outputFile)
+
+	for _, keyValue := range keyValues {
+		encoder.Encode(&keyValue)
+	}
 }

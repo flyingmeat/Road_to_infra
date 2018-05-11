@@ -1,6 +1,9 @@
 package mapreduce
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 //
 // schedule() starts and waits for all tasks in the given phase (mapPhase
@@ -30,5 +33,42 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
 	//
 	// Your code here (Part III, Part IV).
 	//
+
+	var workersPool sync.WaitGroup
+	var taskLock sync.Mutex
+
+	undoTask := ntasks
+	taskRemain := make(chan int, ntasks)
+	for taskNum := 0; taskNum < ntasks; taskNum++ {
+		taskRemain <- taskNum
+	}
+
+	for currentTaskNum := range taskRemain {
+		worker := <- registerChan
+		workersPool.Add(1)
+		go func(taskNum int, taskRemain chan int) {
+			ok := call(worker, "Worker.DoTask", DoTaskArgs{jobName, mapFiles[taskNum], phase, taskNum, n_other}, nil)
+			
+			defer workersPool.Done()
+			// register back to master
+			go func() {registerChan <- worker}()
+
+			if ok == false {
+				taskRemain <- taskNum
+			} else {
+				taskLock.Lock()
+				undoTask--
+				taskLock.Unlock()
+				// if no task remain, should close task channel
+				if undoTask == 0 {
+					close(taskRemain)
+				}
+			}
+
+		}(currentTaskNum, taskRemain)
+	}
+	
+	workersPool.Wait()
+
 	fmt.Printf("Schedule: %v done\n", phase)
 }
