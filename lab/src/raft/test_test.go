@@ -20,7 +20,7 @@ import "sync"
 const RaftElectionTimeout = 1000 * time.Millisecond
 
 func TestInitialElection2A(t *testing.T) {
-	servers := 3
+	servers := 5
 	cfg := make_config(t, servers, false)
 	defer cfg.cleanup()
 
@@ -113,26 +113,53 @@ func TestFailAgree2B(t *testing.T) {
 
 	cfg.begin("Test (2B): agreement despite follower disconnection")
 
-	cfg.one(101, servers, false)
+	cmd0 := cfg.one(101, servers, false)
+	fmt.Println("++++++++++++++++++")
+	fmt.Printf("cmd0 %d\n", cmd0)
+	fmt.Println("++++++++++++++++++")
 
 	// follower network disconnection
 	leader := cfg.checkOneLeader()
+	fmt.Println("==========================")
+	fmt.Printf("Disconnect %d\n", (leader + 1) % servers)
+	fmt.Println("==========================")
 	cfg.disconnect((leader + 1) % servers)
 
 	// agree despite one disconnected server?
-	cfg.one(102, servers-1, false)
-	cfg.one(103, servers-1, false)
+	cmd1 := cfg.one(102, servers-1, false)
+	fmt.Println("++++++++++++++++++")
+	fmt.Printf("cmd1 %d\n", cmd1)
+	fmt.Println("++++++++++++++++++")
+	cmd2 := cfg.one(103, servers-1, false)
+	fmt.Println("++++++++++++++++++")
+	fmt.Printf("cmd2 %d\n", cmd2)
+	fmt.Println("++++++++++++++++++")
 	time.Sleep(RaftElectionTimeout)
-	cfg.one(104, servers-1, false)
-	cfg.one(105, servers-1, false)
+	cmd3 := cfg.one(104, servers-1, false)
+	fmt.Println("++++++++++++++++++")
+	fmt.Printf("cmd3 %d\n", cmd3)
+	fmt.Println("++++++++++++++++++")
+	cmd4 := cfg.one(105, servers-1, false)
+	fmt.Println("++++++++++++++++++")
+	fmt.Printf("cmd4 %d\n", cmd4)
+	fmt.Println("++++++++++++++++++")
 
+	fmt.Println("==========================")
+	fmt.Printf("Connect %d\n", (leader + 1) % servers)
+	fmt.Println("==========================")
 	// re-connect
 	cfg.connect((leader + 1) % servers)
 
 	// agree with full set of servers?
-	cfg.one(106, servers, true)
+	cmd6 := cfg.one(106, servers, true)
+	fmt.Println("++++++++++++++++++")
+	fmt.Printf("cmd6 %d\n", cmd6)
+	fmt.Println("++++++++++++++++++")
 	time.Sleep(RaftElectionTimeout)
-	cfg.one(107, servers, true)
+	cmd7 := cfg.one(107, servers, true)
+	fmt.Println("++++++++++++++++++")
+	fmt.Printf("cmd7 %d\n", cmd7)
+	fmt.Println("++++++++++++++++++")
 
 	cfg.end()
 }
@@ -300,6 +327,9 @@ func TestRejoin2B(t *testing.T) {
 
 	// leader network failure
 	leader1 := cfg.checkOneLeader()
+	fmt.Println("==========================")
+	fmt.Printf("Disconnect %d\n", leader1)
+	fmt.Println("==========================")
 	cfg.disconnect(leader1)
 
 	// make old leader try to agree on some entries
@@ -312,9 +342,15 @@ func TestRejoin2B(t *testing.T) {
 
 	// new leader network failure
 	leader2 := cfg.checkOneLeader()
+	fmt.Println("==========================")
+	fmt.Printf("Disconnect %d\n", leader2)
+	fmt.Println("==========================")
 	cfg.disconnect(leader2)
 
 	// old leader connected again
+	fmt.Println("==========================")
+	fmt.Printf("Connect %d\n", leader1)
+	fmt.Println("==========================")
 	cfg.connect(leader1)
 
 	cfg.one(104, 2, true)
