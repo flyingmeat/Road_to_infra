@@ -42,6 +42,20 @@ type ApplyMsg struct {
 	CommandIndex int
 }
 
+type LogEntry struct {
+	Term int
+	Index int
+	Command interface{}
+}
+
+type Status string
+
+const (
+	follower Status = "follower"
+	candidate Status = "candidate"
+	leader Status = "leader"
+)
+
 //
 // A Go object implementing a single Raft peer.
 //
@@ -54,6 +68,20 @@ type Raft struct {
 	// Your data here (2A, 2B, 2C).
 	// Look at the paper's Figure 2 for a description of what
 	// state a Raft server must maintain.
+
+	// universal states for all servers
+	status Status
+	currentTerm int
+	votedFor int
+	log []*LogEntry
+
+	// volatile state for all servers
+	committedIndex int
+	lastApplied int
+
+	// volatile state on leader
+	nextIndex []int
+	matchIndex []int
 
 }
 
@@ -116,6 +144,10 @@ func (rf *Raft) readPersist(data []byte) {
 //
 type RequestVoteArgs struct {
 	// Your data here (2A, 2B).
+	Term int
+	CandidateId int
+	LastLogIndex int
+	LastLogTerm int
 }
 
 //
@@ -124,6 +156,22 @@ type RequestVoteArgs struct {
 //
 type RequestVoteReply struct {
 	// Your data here (2A).
+	Term int
+	VoteGranted bool
+}
+
+type AppendEntriesArgs struct {
+	Term int
+	LeaderId int
+	PrevLogIndex int
+	PrevLogTerm int
+	Entries []*LogEntry
+	LeaderCommit int
+}
+
+type AppendEntriesReply struct {
+	Term int
+	Success bool
 }
 
 //
