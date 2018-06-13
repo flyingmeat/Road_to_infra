@@ -48,12 +48,12 @@ type LogEntry struct {
 	Command interface{}
 }
 
-type Role string
+type State string
 
 const (
-	LEADER Role = "LEADER"
-	CANDIDATE Role = "CANDIDATE"
-	FOLLOWER Role = "FOLLOWER"
+	LEADER State = "LEADER"
+	CANDIDATE State = "CANDIDATE"
+	FOLLOWER State = "FOLLOWER"
 )
 
 //
@@ -83,7 +83,7 @@ type Raft struct {
 	matchIndex  []int
 
 	// Other states
-	role        Role
+	state        State
 	// TODO: add other states if necessary
 }
 
