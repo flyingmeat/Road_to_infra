@@ -42,6 +42,20 @@ type ApplyMsg struct {
 	CommandIndex int
 }
 
+type LogEntry struct {
+	Index   int
+	Term    int
+	Command interface{}
+}
+
+type Role string
+
+const (
+	LEADER Role = "LEADER"
+	CANDIDATE Role = "CANDIDATE"
+	FOLLOWER Role = "FOLLOWER"
+)
+
 //
 // A Go object implementing a single Raft peer.
 //
@@ -69,6 +83,7 @@ type Raft struct {
 	matchIndex  []int
 
 	// Other states
+	role        Role
 	// TODO: add other states if necessary
 }
 
@@ -131,6 +146,10 @@ func (rf *Raft) readPersist(data []byte) {
 //
 type RequestVoteArgs struct {
 	// Your data here (2A, 2B).
+	Term         int
+	CandidateId  int
+	LastLogIndex int
+	LastLogTerm  int
 }
 
 //
@@ -139,6 +158,8 @@ type RequestVoteArgs struct {
 //
 type RequestVoteReply struct {
 	// Your data here (2A).
+	Term        int
+	VoteGranted bool
 }
 
 //
