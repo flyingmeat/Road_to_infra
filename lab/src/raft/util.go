@@ -12,11 +12,11 @@ func DPrintf(format string, a ...interface{}) (n int, err error) {
 	return
 }
 
-// getLastLog returns the last local log entry.
-func (rf *Raft) getLastLog() *LogEntry {
-	logSize := len(rf.log)
+// getLastLog returns the last log entry.
+func getLastLog(log []LogEntry) *LogEntry {
+	logSize := len(log)
 	if (logSize == 0) {
 		return nil
 	}
-	return &rf.log[logSize - 1]
+	return &log[logSize - 1]
 }

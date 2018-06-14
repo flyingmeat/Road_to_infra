@@ -59,20 +59,20 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	reply.Term = rf.currentTerm
 
 	//  Reply false if term < currentTerm (§5.1)
-	if (args.Term < rf.currentTerm) {
+	if args.Term < rf.currentTerm {
 		reply.VoteGranted = false
 		return
 	}
 
 	// If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
-	if (rf.votedFor == -1 || rf.votedFor == args.CandidateId) {
-		localLastLog := rf.getLastLog()
+	if rf.votedFor == -1 || rf.votedFor == args.CandidateId {
+		localLastLog := getLastLog(rf.log)
 		isLogUpToDate := localLastLog.Term < args.LastLogTerm
 		if localLastLog.Term == args.LastLogTerm {
 			isLogUpToDate = localLastLog.Index <= args.LastLogIndex
 		}
 
-		if (isLogUpToDate) {
+		if isLogUpToDate {
 			rf.votedFor = args.CandidateId
 			reply.VoteGranted = true
 			return
