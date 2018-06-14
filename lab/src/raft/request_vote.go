@@ -1,45 +1,5 @@
 package raft
 
-// example RequestVote RPC reply structure.
-// field names must start with capital letters!
-type RequestVoteReply struct {
-	// Your data here (2A).
-	Term        int
-	VoteGranted bool
-}
-
-// example RequestVote RPC handler.
-func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
-	// Your code here (2A, 2B).
-	rf.mu.Lock()
-	defer rf.mu.Unlock()
-
-	reply.Term = rf.currentTerm
-
-	//  Reply false if term < currentTerm (§5.1)
-	if (args.Term < rf.currentTerm) {
-		reply.VoteGranted = false
-		return
-	}
-
-	// If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
-	if (rf.votedFor == -1 || rf.votedFor == args.CandidateId) {
-		localLastLog := rf.getLastLog()
-		isLogUpToDate := localLastLog.Term < args.LastLogTerm
-		if localLastLog.Term == args.LastLogTerm {
-			isLogUpToDate = localLastLog.Index <= args.LastLogIndex
-		}
-
-		if (isLogUpToDate) {
-			rf.votedFor = args.CandidateId
-			reply.VoteGranted = true
-			return
-		}
-	}
-	
-	reply.VoteGranted = false
-}
-
 // example RequestVote RPC arguments structure.
 // field names must start with capital letters!
 type RequestVoteArgs struct {
@@ -48,6 +8,14 @@ type RequestVoteArgs struct {
 	CandidateId  int
 	LastLogIndex int
 	LastLogTerm  int
+}
+
+// example RequestVote RPC reply structure.
+// field names must start with capital letters!
+type RequestVoteReply struct {
+	// Your data here (2A).
+	Term        int
+	VoteGranted bool
 }
 
 // example code to send a RequestVote RPC to a server.
@@ -80,4 +48,36 @@ type RequestVoteArgs struct {
 func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *RequestVoteReply) bool {
 	ok := rf.peers[server].Call("Raft.RequestVote", args, reply)
 	return ok
+}
+
+// example RequestVote RPC handler.
+func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
+	// Your code here (2A, 2B).
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
+	reply.Term = rf.currentTerm
+
+	//  Reply false if term < currentTerm (§5.1)
+	if (args.Term < rf.currentTerm) {
+		reply.VoteGranted = false
+		return
+	}
+
+	// If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
+	if (rf.votedFor == -1 || rf.votedFor == args.CandidateId) {
+		localLastLog := rf.getLastLog()
+		isLogUpToDate := localLastLog.Term < args.LastLogTerm
+		if localLastLog.Term == args.LastLogTerm {
+			isLogUpToDate = localLastLog.Index <= args.LastLogIndex
+		}
+
+		if (isLogUpToDate) {
+			rf.votedFor = args.CandidateId
+			reply.VoteGranted = true
+			return
+		}
+	}
+
+	reply.VoteGranted = false
 }
