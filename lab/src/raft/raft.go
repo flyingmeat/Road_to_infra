@@ -165,6 +165,27 @@ type RequestVoteReply struct {
 //
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (2A, 2B).
+	rf.mu.Lock()
+
+	localLastLogIndex := len(rf.log)
+	localLastLogTerm := 0
+	if localLastLogTerm > 0 {
+		localLastLogTerm = rf.log[localLastLogIndex - 1].Term
+	}
+
+	isTermValid := args.Term >= rf.currentTerm
+	isLogUpToDate := 
+		args.LastLogTerm > localLastLogTerm || (args.LastLogTerm == localLastLogTerm && args.LastLogIndex >= localLastLogIndex)
+	isAbleToVote := rf.votedFor == -1 || rf.votedFor == args.CandidateId
+
+	if isTermValid && isLogUpToDate && isAbleToVote {
+		reply.VoteGranted = true
+	} else {
+		reply.VoteGranted = false
+	}
+	reply.Term = rf.currentTerm
+
+	rf.mu.Unlock()
 }
 
 //
