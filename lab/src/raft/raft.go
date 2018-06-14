@@ -167,6 +167,29 @@ type RequestVoteReply struct {
 //
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (2A, 2B).
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
+	reply.Term = rf.currentTerm
+
+	if (args.Term < rf.currentTerm) {
+		//  Reply false if term < currentTerm (§5.1)
+		reply.VoteGranted = false
+	} else if (rf.votedFor == -1 || rf.votedFor == args.CandidateId) {
+		// If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
+		localLastLog := rf.getLastLog()
+		isLogUpToDate := localLastLog.Term < args.LastLogTerm
+		if localLastLog.Term == args.LastLogTerm {
+			isLogUpToDate = localLastLog.Index <= args.LastLogIndex
+		}
+
+		if (isLogUpToDate) {
+			rf.votedFor = args.CandidateId
+			reply.VoteGranted = true
+		} else {
+			reply.VoteGranted = false
+		}
+	}
 }
 
 //
