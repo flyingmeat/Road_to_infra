@@ -49,7 +49,6 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			entry := args.Entries[i]
 			if entry.Index <= len(rf.logs) {
 				if rf.logs[entry.Index - 1].Term != entry.Term {
-					// this might be wrong
 					rf.logs = rf.logs[:entry.Index - 1]
 				} else {
 					continue
