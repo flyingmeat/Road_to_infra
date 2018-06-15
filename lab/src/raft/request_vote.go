@@ -31,7 +31,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 
 	localLastLogIndex := len(rf.log)
 	localLastLogTerm := 0
-	if localLastLogTerm > 0 {
+	if localLastLogIndex > 0 {
 		localLastLogTerm = rf.log[localLastLogIndex - 1].Term
 	}
 
