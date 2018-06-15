@@ -57,16 +57,20 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	defer rf.mu.Unlock()
 
 	reply.Term = rf.currentTerm
+	reply.VoteGranted = false
 
 	//  Reply false if term < currentTerm (§5.1)
 	if args.Term < rf.currentTerm {
-		reply.VoteGranted = false
 		return
 	}
 
 	// If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
 	if rf.votedFor == -1 || rf.votedFor == args.CandidateId {
 		localLastLog := getLastLog(rf.log)
+		if localLastLog == nil {
+			return
+		}
+
 		isLogUpToDate := localLastLog.Term < args.LastLogTerm
 		if localLastLog.Term == args.LastLogTerm {
 			isLogUpToDate = localLastLog.Index <= args.LastLogIndex
@@ -78,6 +82,4 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 			return
 		}
 	}
-
-	reply.VoteGranted = false
 }
