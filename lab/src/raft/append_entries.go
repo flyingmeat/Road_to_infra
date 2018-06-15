@@ -61,3 +61,12 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		reply.Success = false
 	}
 }
+
+func (rf *Raft) IsLogConsecutive() bool {
+	for i := 0; i < len(rf.logs); i++ {
+		if rf.logs[i] == nil {
+			return false
+		}
+	}
+	return true
+}
