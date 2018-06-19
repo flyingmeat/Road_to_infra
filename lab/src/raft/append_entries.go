@@ -41,23 +41,28 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 
 	// If an existing entry conflicts with a new one (same index but different terms),
 	// delete the existing entry and all that follow it (§5.3)
-	for i := range rf.log {
-		if args.Log[i].Term != rf.log[i].Term {
-			rf.log = rf.log[i - 1:]
-			// Append any new entries not already in the log
-			rf.log = append(rf.log, args.Log[i:]...)
-			break
+	var lastSameIndex int
+	for i, leaderEntry := range args.Entries {
+		if leaderEntry.Index <= len(rf.log) {
+			if leaderEntry.Term != rf.log[leaderEntry.Index - 1].Term {
+				rf.log = rf.log[i - 1:]
+				lastSameIndex = i
+				break
+			}
 		}
 	}
+	// Append any new entries not already in the log
+	rf.log = append(rf.log, args.Entries[lastSameIndex:]...)
 
 	// If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
 	if (args.LeaderCommit > rf.commitIndex) {
 		lastNewEntryIndex := -1
-		lastNewEntry := getLastLog(args.Log)
+		lastNewEntry := getLastLog(args.Entries)
 		if lastNewEntry != nil {
 			lastNewEntryIndex = lastNewEntry.Index
 		}
 		rf.commitIndex = math.Min(args.LeaderCommit, lastNewEntryIndex)
+		// TODO(ling): apply the messages between lastApplied and commitIndex
 	}
 
 	reply.Success = true
