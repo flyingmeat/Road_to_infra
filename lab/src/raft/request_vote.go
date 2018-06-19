@@ -67,9 +67,16 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
 	if rf.votedFor == -1 || rf.votedFor == args.CandidateId {
 		localLastLog := getLastLog(rf.log)
-		isLogUpToDate := localLastLog == nil || localLastLog.Term < args.LastLogTerm
-		if localLastLog.Term == args.LastLogTerm {
-			isLogUpToDate = localLastLog.Index <= args.LastLogIndex
+
+		// Check if candidate’s log is at least as up-to-date as receiver’s log
+		var isLogUpToDate bool
+		if localLastLog == nil {
+			isLogUpToDate = true
+		} else {
+			isLogUpToDate = localLastLog.Term < args.LastLogTerm
+			if localLastLog.Term == args.LastLogTerm {
+				isLogUpToDate = localLastLog.Index <= args.LastLogIndex
+			}
 		}
 
 		if isLogUpToDate {
