@@ -22,7 +22,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 
 	defer rf.mu.Unlock()
 
-	if args.Term < rf.currentTerm {
+	if args.Term < rf.currentTerm || !rf.IsLogConsecutive(){
 		reply.Success = false
 		return
 	}
@@ -31,7 +31,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		rf.committedIndex = min(args.LeaderCommit, len(rf.logs))
 	}
 
-	if rf.committedIndex > rf.lastApplied && rf.IsLogConsecutive(){
+	if rf.committedIndex > rf.lastApplied {
 		// Apply all the un-applied command here
 		for i := rf.lastApplied + 1; i <= rf.committedIndex; i++ {
 			rf.applyCh <- ApplyMsg{true, rf.logs[i - 1].Command, rf.logs[i - 1].Index}
