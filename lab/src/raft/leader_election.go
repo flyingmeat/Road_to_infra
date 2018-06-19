@@ -36,4 +36,5 @@ func (rf *Raft) run() {
 			// TODO(ling): send heartbeat
 		}
 	}
+	go rf.startLeaderElection()
 }
