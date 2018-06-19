@@ -87,6 +87,10 @@ type Raft struct {
 	// leader election
 	heartBeatClock *time.Timer
 	clockInterval time.Duration
+	// since we wait for 1 whole clock interval before every
+	// round of leader of election, this onEmptyElectionTerm
+	// will indicate whether current clock interval should be waiting
+	// or not
 	onEmptyElectionTerm bool
 
 	// other
