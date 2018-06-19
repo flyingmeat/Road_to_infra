@@ -30,4 +30,5 @@ func (rf *Raft) startLeaderElection() {
 	if rf.state != LEADER && time.Now().Sub(rf.lastHeartBeat) >= electionTimeout {
 		go rf.runLeaderElection()
 	}
+	go rf.startLeaderElection()
 }
