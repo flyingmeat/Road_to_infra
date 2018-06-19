@@ -19,6 +19,7 @@ package raft
 
 import "sync"
 import "labrpc"
+import "time"
 
 // import "bytes"
 // import "labgob"
@@ -83,6 +84,15 @@ type Raft struct {
 	nextIndex []int
 	matchIndex []int
 
+	// leader election
+	heartBeatClock *time.Timer
+	clockInterval time.Duration
+	onEmptyElectionTerm bool
+
+	// other
+	applyCh chan ApplyMsg
+	killChan chan bool
+
 }
 
 // return currentTerm and whether this server
@@ -92,6 +102,10 @@ func (rf *Raft) GetState() (int, bool) {
 	var term int
 	var isleader bool
 	// Your code here (2A).
+	rf.mu.Lock()
+	term = rf.currentTerm
+	isleader = (rf.status == leader)
+	rf.mu.Unlock()
 	return term, isleader
 }
 
@@ -229,6 +243,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 //
 func (rf *Raft) Kill() {
 	// Your code here, if desired.
+	rf.killChan <- true
 }
 
 //
@@ -254,6 +269,30 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
 
+	rf.mu.Lock()
+	
+	rf.applyCh = applyCh
+
+	rf.votedFor = -1
+	rf.onEmptyElectionTerm = false
+	
+	rf.status = follower
+	rf.currentTerm = 0
+	rf.killChan = make(chan bool, 1)
+
+	rf.logs = []*LogEntry{}
+	rf.committedIndex = 0
+	rf.lastApplied = 0
+
+	rf.nextIndex = []int{}
+	rf.matchIndex = []int{}
+
+	// Start timing
+	rf.clockInterval = time.Duration(rand.Intn(150) + 200 + (rf.me*100)%150)
+	rf.heartBeatClock = time.NewTimer(rf.clockInterval*time.Millisecond)
+	rf.mu.Unlock()
+
+	go rf.LeaderElection()
 
 	return rf
 }
