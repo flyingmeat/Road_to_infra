@@ -92,6 +92,9 @@ type Raft struct {
 	// will indicate whether current clock interval should be waiting
 	// or not
 	onEmptyElectionTerm bool
+	// channel used for vote control
+	voteChan chan int
+	closeVoteChan chan bool
 
 	// other
 	applyCh chan ApplyMsg
