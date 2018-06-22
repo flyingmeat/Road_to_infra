@@ -40,7 +40,9 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	}
 
 	if len(args.Entries) == 0 {
-		// TODO(heng): dealing with heatbeat here
+		// Handle heartbeat
+		reply.Success = true
+		rf.BackToFollower(args.Term)
 	}
 
 	if args.PrevLogIndex <= 0 || rf.logs[args.PrevLogIndex - 1].Term == args.PrevLogTerm {
