@@ -5,7 +5,26 @@ func (rf *Raft) SetHeatBeatClock() {
 }
 
 func (rf *Raft) SendHeartbeat() {
-	// send heartbeat to all other followers
+	// Send heartbeat to all other followers
+	for server := 0; server < len(rf.peers); server++ {
+		if server == rf.me {
+			continue
+		}
+		rf.mu.Lock()
+		currentTerm := rf.currentTerm
+		rf.mu.Unlock()
+		go func(currentTerm int, server int) {
+			args := AppendEntriesArgs{currentTerm, rf.me, []*LogEntry{}, 0, 0, rf.committedIndex}
+			reply := AppendEntriesReply{}
+			ok := rf.SendAppendEntries(server, &args, &reply)
+			if !ok {
+				return
+			}
+			if !reply.Success && reply.Term > currentTerm {
+				rf.BackToFollower(reply.Term)
+			}
+		}(currentTerm, server)
+	}
 }
 
 func (rf *Raft) LeaderElection() {
