@@ -200,7 +200,7 @@ func Make(peers []*labrpc.ClientEnd, me int, persister *Persister, applyCh chan 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
 
-	go rf.startLeaderElection()
+	go rf.run()
 
 	return rf
 }

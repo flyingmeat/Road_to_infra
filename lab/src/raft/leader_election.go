@@ -21,14 +21,19 @@ func (rf *Raft) runLeaderElection() {
 
 // Kick off leader election periodically by sending out RequestVote RPCs
 // when it hasn't heard from another peer for a while.
-func (rf *Raft) startLeaderElection() {
-	rf.Lock()
-	defer rf.Unlock()
+func (rf *Raft) run() {
+	for {
+		rf.Lock()
+		defer rf.Unlock()
 
-	electionTimeout := 300 + time.Duration(rand.Intn(150)) * time.Microsecond
+		electionTimeout := 300 + time.Duration(rand.Intn(150)) * time.Microsecond
+		clock := time.NewTimer(electionTimeout)
 
-	if rf.state != LEADER && time.Now().Sub(rf.lastHeartBeat) >= electionTimeout {
-		go rf.runLeaderElection()
+		<-clock.C
+		if rf.state != LEADER {
+			go rf.runLeaderElection()
+		} else {
+			// TODO(ling): send heartbeat
+		}
 	}
-	go rf.startLeaderElection()
 }
