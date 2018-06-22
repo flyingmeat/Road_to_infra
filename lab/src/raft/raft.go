@@ -17,12 +17,16 @@ package raft
 //   in the same server.
 //
 
-import "sync"
-import "labrpc"
+import (
+	"sync"
+	"time"
+
+	"labrpc"
+)
+
 
 // import "bytes"
 // import "labgob"
-
 
 
 //
@@ -60,30 +64,31 @@ const (
 // A Go object implementing a single Raft peer.
 //
 type Raft struct {
-	mu        sync.Mutex          // Lock to protect shared access to this peer's state
-	peers     []*labrpc.ClientEnd // RPC end points of all peers
-	persister *Persister          // Object to hold this peer's persisted state
-	me        int                 // this peer's index into peers[]
+	mu            sync.Mutex          // Lock to protect shared access to this peer's state
+	peers         []*labrpc.ClientEnd // RPC end points of all peers
+	persister     *Persister          // Object to hold this peer's persisted state
+	me            int                 // this peer's index into peers[]
 
-	// Your data here (2A, 2B, 2C).
-	// Look at the paper's Figure 2 for a description of what
-	// state a Raft server must maintain.
+  	// Your data here (2A, 2B, 2C).
+  	// Look at the paper's Figure 2 for a description of what
+  	// state a Raft server must maintain.
 
-	// Persistent state on all servers
-	currentTerm int
-	votedFor    int
-	log         []LogEntry
+  	// Persistent state on all servers
+	currentTerm   int
+	votedFor      int
+	log           []LogEntry
 
-	// Volatile state on all servers
-	commitIndex int
-	lastApplied int
+  	// Volatile state on all servers
+	commitIndex   int
+	lastApplied   int
 
 	// Volatile state on leaders
-	nextIndex   []int
-	matchIndex  []int
+	nextIndex     []int
+	matchIndex    []int
 
-	// Other states
-	state        State
+  	// Other states
+	state         State
+	lastHeartBeat time.Time
 	// TODO: add other states if necessary
 }
 
@@ -119,7 +124,8 @@ func (rf *Raft) persist() {
 // restore previously persisted state.
 //
 func (rf *Raft) readPersist(data []byte) {
-	if data == nil || len(data) < 1 { // bootstrap without any state?
+	if data == nil || len(data) < 1 {
+		// bootstrap without any state?
 		return
 	}
 	// Your code here (2C).
@@ -183,8 +189,7 @@ func (rf *Raft) Kill() {
 // Make() must return quickly, so it should start goroutines
 // for any long-running work.
 //
-func Make(peers []*labrpc.ClientEnd, me int,
-	persister *Persister, applyCh chan ApplyMsg) *Raft {
+func Make(peers []*labrpc.ClientEnd, me int, persister *Persister, applyCh chan ApplyMsg) *Raft {
 	rf := &Raft{}
 	rf.peers = peers
 	rf.persister = persister
@@ -195,6 +200,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
 
+	go rf.run()
 
 	return rf
 }
