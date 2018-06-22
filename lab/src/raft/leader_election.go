@@ -1,5 +1,7 @@
 package raft
 
+import "time"
+
 func (rf *Raft) SetHeatBeatClock() {
 	rf.heartBeatClock.Reset(rf.clockInterval*time.Millisecond)
 }
