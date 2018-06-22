@@ -11,3 +11,12 @@ func DPrintf(format string, a ...interface{}) (n int, err error) {
 	}
 	return
 }
+
+// getLastLog returns the last log entry.
+func getLastLog(log []LogEntry) *LogEntry {
+	logSize := len(log)
+	if (logSize == 0) {
+		return nil
+	}
+	return &log[logSize - 1]
+}
