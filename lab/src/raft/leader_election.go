@@ -26,12 +26,14 @@ func (rf *Raft) run() {
 		rf.Lock()
 		defer rf.Unlock()
 
+		// If a follower receives no communication over a period of time called the election timeout,
+		// then it assumes there is no viable leader and begins an election to choose a new leader.
 		electionTimeout := 300 + time.Duration(rand.Intn(150)) * time.Microsecond
-		clock := time.NewTimer(electionTimeout)
-
-		<-clock.C
+		<-time.After(electionTimeout)
 		if rf.state != LEADER {
-			go rf.runLeaderElection()
+			if time.Now().Sub(rf.lastHeartBeat) >= electionTimeout {
+				go rf.runLeaderElection()
+			}
 		} else {
 			// TODO(ling): send heartbeat
 		}
