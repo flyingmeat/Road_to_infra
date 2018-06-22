@@ -10,6 +10,12 @@ func (rf *Raft) toCandidate() {
 	rf.votedFor = rf.me  // Vote for self
 }
 
+func (rf *Raft) toFollower(currentTerm int) {
+	rf.state = FOLLOWER
+	rf.currentTerm = currentTerm
+	rf.votedFor = -1
+}
+
 func (rf *Raft) runLeaderElection() {
 	rf.toCandidate()
 
@@ -17,6 +23,40 @@ func (rf *Raft) runLeaderElection() {
 	voteChan := make(chan int, len(rf.peers) - 1)
 
 	// TODO(ling): Implement vote
+}
+
+func (rf *Raft) sendHeartbeat() {
+	lastLog := getLastLog(rf.log)
+	args := AppendEntriesArgs{
+		Term:             rf.currentTerm,
+		Leader:           rf.me,
+		PrevLogIndex:     lastLog.Index,
+		PrevLogTerm:      lastLog.Term,
+		Entries:          []LogEntry{},
+		LeaderCommit:     rf.commitIndex,
+	}
+	reply := AppendEntriesReply{}
+	for i := range rf.peers {
+		if i != rf.me {
+			rf.sendAppendEntries(i, &args, &reply)
+			if reply.Success {
+				// If successful: update nextIndex and matchIndex for follower (§5.3)
+				rf.matchIndex[i] = lastLog.Index
+				rf.nextIndex[i] = lastLog.Index + 1
+			} else {
+				if reply.Term > rf.currentTerm {
+					// If RPC request or response contains term T > currentTerm:
+					// set currentTerm = T, convert to follower (§5.1)
+					rf.toFollower(reply.Term)
+				} else {
+					// If AppendEntries fails because of log inconsistency: decrement nextIndex and retry (§5.3)
+					rf.nextIndex--
+					rf.sendHeartbeat()
+				}
+			}
+			// TODO(ling): update commit index
+		}
+	}
 }
 
 // Kick off leader election periodically by sending out RequestVote RPCs
@@ -35,7 +75,7 @@ func (rf *Raft) run() {
 				go rf.runLeaderElection()
 			}
 		} else {
-			// TODO(ling): send heartbeat
+			rf.sendHeartbeat()
 		}
 	}
 }
