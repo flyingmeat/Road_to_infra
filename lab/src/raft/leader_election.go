@@ -39,22 +39,9 @@ func (rf *Raft) sendHeartbeat() {
 	for i := range rf.peers {
 		if i != rf.me {
 			rf.sendAppendEntries(i, &args, &reply)
-			if reply.Success {
-				// If successful: update nextIndex and matchIndex for follower (§5.3)
-				rf.matchIndex[i] = lastLog.Index
-				rf.nextIndex[i] = lastLog.Index + 1
-			} else {
-				if reply.Term > rf.currentTerm {
-					// If RPC request or response contains term T > currentTerm:
-					// set currentTerm = T, convert to follower (§5.1)
-					rf.toFollower(reply.Term)
-				} else {
-					// If AppendEntries fails because of log inconsistency: decrement nextIndex and retry (§5.3)
-					rf.nextIndex--
-					rf.sendHeartbeat()
-				}
+			if !reply.Success {
+				rf.toFollower(reply.Term)
 			}
-			// TODO(ling): update commit index
 		}
 	}
 }
@@ -63,8 +50,8 @@ func (rf *Raft) sendHeartbeat() {
 // when it hasn't heard from another peer for a while.
 func (rf *Raft) run() {
 	for {
-		rf.Lock()
-		defer rf.Unlock()
+		rf.mu.Lock()
+		defer rf.mu.Unlock()
 
 		// If a follower receives no communication over a period of time called the election timeout,
 		// then it assumes there is no viable leader and begins an election to choose a new leader.
