@@ -16,13 +16,102 @@ func (rf *Raft) toFollower(currentTerm int) {
 	rf.votedFor = -1
 }
 
+func (rf *Raft) toLeader() {
+	rf.state = LEADER
+	rf.leader = rf.me
+
+	// clear states
+	rf.nextIndex = make([]int, len(rf.peers))
+	rf.matchIndex = make([]int, len(rf.peers))
+
+	// send heartbeat
+	// Elect a new leader within five seconds of the failure of the old leader
+	// (if a majority of peers can still communicate)
+	//ticker := time.NewTicker(5 * time.Second)
+	//quit := make(chan struct{})
+	//for {
+	//	if rf.role != LEADER {
+	//		ticker.Stop()
+	//		break
+	//	}
+	//
+	//	select {
+	//	case <-ticker.C:
+	//		rf.sendHeartbeat()
+	//	case <-quit:
+	//		ticker.Stop()
+	//		return
+	//	}
+	//}
+	rf.sendHeartbeat()
+}
+
+func (rf *Raft) vote(voteChan chan int, replies []RequestVoteReply) {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
+	lastLog := getLastLog(rf.log)
+	lastLogIndex, lastLogTerm := -1, -1
+	if (lastLog != nil) {
+		lastLogIndex = lastLog.Index
+		lastLogTerm = lastLog.Term
+	}
+	args := RequestVoteArgs{
+		Term: rf.currentTerm,
+		CandidateId: rf.me,
+		LastLogIndex: lastLogIndex,
+		LastLogTerm: lastLogTerm,
+	}
+
+	for i := range rf.peers {
+		if (i != rf.me) {
+			go rf.sendRequestVote(i, &args, &replies[i])
+			voteChan <- i
+		}
+	}
+}
+
+func (rf *Raft) countVotes(voteChan chan int, replies []RequestVoteReply) {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
+	votes := 1  // vote for self
+	for _ = range replies {
+		peer := <-voteChan
+		reply := replies[peer]
+
+		// If AppendEntries RPC received from new leader: convert to follower
+		if (reply.Term > rf.currentTerm) {
+			rf.toFollower(reply.Term)
+			return
+		}
+		if (reply.VoteGranted) {
+			votes += 1
+		}
+
+		// If votes received from majority of servers: become leader
+		isMajority := votes > len(replies) / 2
+		if (isMajority && rf.state == CANDIDATE) {
+			rf.toLeader()
+			close(voteChan)
+		}
+
+		// If election timeout elapses: start new election?
+	}
+	return
+}
+
 func (rf *Raft) runLeaderElection() {
 	rf.toCandidate()
 
-	replies := make([]RequestVoteReply, len(rf.peers))
 	voteChan := make(chan int, len(rf.peers) - 1)
+	replies := make([]RequestVoteReply, len(rf.peers))
+	for i, _ := range replies {
+		replies[i] = &RequestVoteReply{}
+	}
 
-	// TODO(ling): Implement vote
+	rf.vote(voteChan, replies)
+	rf.countVotes(voteChan, replies)
 }
 
 func (rf *Raft) sendHeartbeat() {
