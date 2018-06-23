@@ -25,24 +25,6 @@ func (rf *Raft) toLeader() {
 	rf.matchIndex = make([]int, len(rf.peers))
 
 	// send heartbeat
-	// Elect a new leader within five seconds of the failure of the old leader
-	// (if a majority of peers can still communicate)
-	//ticker := time.NewTicker(5 * time.Second)
-	//quit := make(chan struct{})
-	//for {
-	//	if rf.role != LEADER {
-	//		ticker.Stop()
-	//		break
-	//	}
-	//
-	//	select {
-	//	case <-ticker.C:
-	//		rf.sendHeartbeat()
-	//	case <-quit:
-	//		ticker.Stop()
-	//		return
-	//	}
-	//}
 	rf.sendHeartbeat()
 }
 
