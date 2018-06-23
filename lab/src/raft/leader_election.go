@@ -77,8 +77,6 @@ func (rf *Raft) countVotes(voteChan chan int, replies []RequestVoteReply) {
 			rf.toLeader()
 			close(voteChan)
 		}
-
-		// If election timeout elapses: start new election?
 	}
 	return
 }
