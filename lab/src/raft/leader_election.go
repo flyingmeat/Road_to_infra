@@ -22,7 +22,7 @@ func (rf *Raft) SendHeartbeat() {
 			if !ok {
 				return
 			}
-			if !reply.Success && reply.Term > currentTerm {
+			if !reply.Success {
 				rf.BackToFollower(reply.Term)
 			}
 		}(currentTerm, server)

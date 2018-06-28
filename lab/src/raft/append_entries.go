@@ -22,7 +22,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 
 	defer rf.mu.Unlock()
 
-	if args.Term < rf.currentTerm || !rf.IsLogConsecutive(){
+	if args.Term < rf.currentTerm {
 		reply.Success = false
 		return
 	}
@@ -45,7 +45,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		rf.BackToFollower(args.Term)
 	}
 
-	if args.PrevLogIndex <= 0 || rf.logs[args.PrevLogIndex - 1].Term == args.PrevLogTerm {
+	if rf.IsLogConsecutive() && (args.PrevLogIndex <= 0 || rf.logs[args.PrevLogIndex - 1].Term == args.PrevLogTerm) {
 		reply.Success = true
 		for i := 0; i < len(args.Entries); i++ {
 			entry := args.Entries[i]
