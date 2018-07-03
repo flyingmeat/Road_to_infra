@@ -23,6 +23,17 @@ func (rf *Raft) BackToFollower(newTerm int) {
 	rf.mu.Unlock()
 }
 
+func (rf *Raft) UpToLeader(newTerm int) {
+	rf.status = leader
+	rf.currentTerm = newTerm
+	rf.clockInterval = time.Duration(rand.Intn(50) + 100)
+	for i := 0; i < len(rf.peers); i++ {
+		rf.nextIndex = append(rf.nextIndex, len(rf.logs) + 1)
+		rf.matchIndex = append(rf.matchIndex, 0)
+	}
+	rf.SetHeatBeatClock()
+}
+
 func (rf *Raft) LeaderElection() {
 	for {
 		select {
@@ -99,6 +110,7 @@ func (rf *Raft) StartSendVoteRequest(newTerm int, closeSendVoteRequestChan chan 
 
 			requestVoteArgs := RequestVoteArgs{newTerm, rf.me, lastLogIndex, lastLogTerm}
 			requestVoteReply := RequestVoteReply{}
+			
 			ok := rf.sendRequestVote(server, &requestVoteArgs, &requestVoteReply)
 			if ok {
 				if requestVoteReply.VoteGranted && !*isSendVoteClose {
@@ -130,14 +142,7 @@ func (rf *Raft) CountVote(newTerm int, closeSendVoteRequestChan chan bool) {
 				if voteCount > len(rf.log) / 2 {
 					// Change to leader
 					rf.mu.Lock()
-					rf.status = leader
-					rf.currentTerm = newTerm
-					rf.clockInterval = time.Duration(rand.Intn(50) + 100)
-					for i := 0; i < len(rf.peers); i++ {
-						rf.nextIndex = append(rf.nextIndex, len(rf.logs) + 1)
-						rf.matchIndex = append(rf.matchIndex, 0)
-					}
-					rf.SetHeatBeatClock()
+					rf.UpToLeader(newTerm)
 					rf.mu.Unlock()
 					closeSendVoteRequestChan <- true
 					rf.SendHeartbeat()
