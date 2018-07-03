@@ -85,7 +85,7 @@ type Raft struct {
 	matchIndex []int
 
 	// leader election
-	heartBeatClock *time.Timer
+	clock *time.Timer
 	clockInterval time.Duration
 	// since we wait for 1 whole clock interval before every
 	// round of leader of election, this onEmptyElectionTerm
@@ -235,7 +235,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	// Start timing
 	rf.clockInterval = time.Duration(rand.Intn(150) + 200 + (rf.me*100)%150)
-	rf.heartBeatClock = time.NewTimer(rf.clockInterval*time.Millisecond)
+	rf.clock = time.NewTimer(rf.clockInterval*time.Millisecond)
 	rf.mu.Unlock()
 
 	go rf.LeaderElection()

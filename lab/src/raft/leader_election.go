@@ -1,7 +1,7 @@
 package raft
 
 func (rf *Raft) SetHeatBeatClock() {
-	rf.heartBeatClock.Reset(rf.clockInterval*time.Millisecond)
+	rf.clock.Reset(rf.clockInterval*time.Millisecond)
 }
 
 func (rf *Raft) SendHeartbeat() {
@@ -39,7 +39,7 @@ func (rf *Raft) LeaderElection() {
 		select {
 			case <- rf.killChan:
 				return
-			case <- rf.heartBeatClock.C:
+			case <- rf.clock.C:
 				rf.SetHeatBeatClock()
 				_, isLeader := rf.GetState()
 				if !isLeader {
@@ -110,7 +110,7 @@ func (rf *Raft) StartSendVoteRequest(newTerm int, closeSendVoteRequestChan chan 
 
 			requestVoteArgs := RequestVoteArgs{newTerm, rf.me, lastLogIndex, lastLogTerm}
 			requestVoteReply := RequestVoteReply{}
-			
+
 			ok := rf.sendRequestVote(server, &requestVoteArgs, &requestVoteReply)
 			if ok {
 				if requestVoteReply.VoteGranted && !*isSendVoteClose {
