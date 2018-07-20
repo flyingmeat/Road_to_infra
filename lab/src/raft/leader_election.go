@@ -1,6 +1,8 @@
 package raft
 
 import "time"
+import "math/rand"
+
 
 func (rf *Raft) SetHeatBeatClock() {
 	rf.clock.Reset(rf.clockInterval*time.Millisecond)
@@ -30,7 +32,6 @@ func (rf *Raft) SendHeartbeat() {
 }
 
 func (rf *Raft) BackToFollower(newTerm int) {
-	rf.mu.Lock()
 	rf.currentTerm = newTerm
 	rf.votedFor = -1
 	if rf.status == candidate {
@@ -41,7 +42,6 @@ func (rf *Raft) BackToFollower(newTerm int) {
 	rf.status = follower
 	rf.onEmptyElectionTerm = false
 	rf.SetHeatBeatClock()
-	rf.mu.Unlock()
 }
 
 func (rf *Raft) UpToLeader(newTerm int) {
@@ -49,7 +49,7 @@ func (rf *Raft) UpToLeader(newTerm int) {
 	rf.currentTerm = newTerm
 	rf.clockInterval = time.Duration(rand.Intn(50) + 100)
 	for i := 0; i < len(rf.peers); i++ {
-		rf.nextIndex = append(rf.nextIndex, len(rf.logs) + 1)
+		rf.nextIndex = append(rf.nextIndex, len(rf.log) + 1)
 		rf.matchIndex = append(rf.matchIndex, 0)
 	}
 	rf.SetHeatBeatClock()
@@ -63,6 +63,7 @@ func (rf *Raft) LeaderElection() {
 			case <- rf.clock.C:
 				rf.SetHeatBeatClock()
 				_, isLeader := rf.GetState()
+
 				if !isLeader {
 					// if time out start election round
 					rf.mu.Lock()
@@ -99,6 +100,7 @@ func (rf *Raft) StartElection() {
 	newTerm := rf.currentTerm + 1
 	rf.status = candidate
 	rf.votedFor = rf.me
+	rf.closeVoteChan = make(chan bool, 1)
 	rf.mu.Unlock()
 
 	// channel used to close the send vote request proccesses
@@ -121,15 +123,13 @@ func (rf *Raft) StartSendVoteRequest(newTerm int, closeSendVoteRequestChan chan 
 			continue
 		}
 		go func(server int, closeSendVoteRequestChan chan bool, isSendVoteClose *bool) {
-			rf.mu.Lock()
 			localLastLogIndex := len(rf.log)
 			localLastLogTerm := 0
 			if localLastLogIndex > 0 {
 				localLastLogTerm = rf.log[localLastLogIndex - 1].Term
 			}
-			rf.mu.Unlock()
 
-			requestVoteArgs := RequestVoteArgs{newTerm, rf.me, lastLogIndex, lastLogTerm}
+			requestVoteArgs := RequestVoteArgs{newTerm, rf.me, localLastLogIndex, localLastLogTerm}
 			requestVoteReply := RequestVoteReply{}
 
 			ok := rf.sendRequestVote(server, &requestVoteArgs, &requestVoteReply)
