@@ -2,6 +2,7 @@ package raft
 
 import (
 	"math"
+	"time"
 )
 
 type AppendEntriesArgs struct {
@@ -35,10 +36,10 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		return
 	}
 
-	rf.leader == args.Leader
+	rf.leader = args.Leader
 	rf.lastHeartBeat = time.Now()
 	if rf.state == CANDIDATE {
-		rt.toFollower(args.Term)
+		rf.toFollower(args.Term)
 	}
 
 	// Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
@@ -51,7 +52,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	// If an existing entry conflicts with a new one (same index but different terms),
 	// delete the existing entry and all that follow it (§5.3)
 	var lastSameIndex int
-	for i, leaderEntry := range args.Entries {
+	for _, leaderEntry := range args.Entries {
 		if leaderEntry.Index <= len(rf.log) {
 			if leaderEntry.Term != rf.log[leaderEntry.Index - 1].Term {
 				rf.log = rf.log[:leaderEntry.Index - 1]
@@ -70,7 +71,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		if lastNewEntry != nil {
 			lastNewEntryIndex = lastNewEntry.Index
 		}
-		rf.commitIndex = math.Min(args.LeaderCommit, lastNewEntryIndex)
+		rf.commitIndex = int(math.Min(float64(args.LeaderCommit), float64(lastNewEntryIndex)))
 		// TODO(ling): apply the messages between lastApplied and commitIndex
 	}
 
