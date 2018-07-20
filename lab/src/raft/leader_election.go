@@ -10,6 +10,12 @@ func (rf *Raft) toCandidate() {
 	rf.votedFor = rf.me  // Vote for self
 }
 
+func (rf *Raft) toFollower(currentTerm int) {
+	rf.state = FOLLOWER
+	rf.currentTerm = currentTerm
+	rf.votedFor = -1
+}
+
 func (rf *Raft) runLeaderElection() {
 	rf.toCandidate()
 
@@ -19,12 +25,33 @@ func (rf *Raft) runLeaderElection() {
 	// TODO(ling): Implement vote
 }
 
+func (rf *Raft) sendHeartbeat() {
+	lastLog := getLastLog(rf.log)
+	args := AppendEntriesArgs{
+		Term:             rf.currentTerm,
+		Leader:           rf.me,
+		PrevLogIndex:     lastLog.Index,
+		PrevLogTerm:      lastLog.Term,
+		Entries:          []LogEntry{},
+		LeaderCommit:     rf.commitIndex,
+	}
+	reply := AppendEntriesReply{}
+	for i := range rf.peers {
+		if i != rf.me {
+			rf.sendAppendEntries(i, &args, &reply)
+			if !reply.Success {
+				rf.toFollower(reply.Term)
+			}
+		}
+	}
+}
+
 // Kick off leader election periodically by sending out RequestVote RPCs
 // when it hasn't heard from another peer for a while.
 func (rf *Raft) run() {
 	for {
-		rf.Lock()
-		defer rf.Unlock()
+		rf.mu.Lock()
+		defer rf.mu.Unlock()
 
 		// If a follower receives no communication over a period of time called the election timeout,
 		// then it assumes there is no viable leader and begins an election to choose a new leader.
@@ -35,7 +62,7 @@ func (rf *Raft) run() {
 				go rf.runLeaderElection()
 			}
 		} else {
-			// TODO(ling): send heartbeat
+			rf.sendHeartbeat()
 		}
 	}
 }

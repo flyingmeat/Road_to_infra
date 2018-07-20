@@ -89,6 +89,7 @@ type Raft struct {
   	// Other states
 	state         State
 	lastHeartBeat time.Time
+	leader        int
 	// TODO: add other states if necessary
 }
 

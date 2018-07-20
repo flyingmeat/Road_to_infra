@@ -18,18 +18,27 @@ type AppendEntriesReply struct {
 	Success bool
 }
 
+func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *AppendEntriesReply) bool {
+	ok := rf.peers[server].Call("Raft.AppendEntries", args, reply)
+	return ok
+}
+
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
-	rf.Lock()
-	defer rf.Unlock()
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 
 	reply.Term = rf.currentTerm
-
-	// TODO(ling): Implement heartbeat.
 
 	//  Reply false if term < currentTerm (§5.1)
 	if args.Term < rf.currentTerm {
 		reply.Success = false
 		return
+	}
+
+	rf.leader == args.Leader
+	rf.lastHeartBeat = time.Now()
+	if rf.state == CANDIDATE {
+		rt.toFollower(args.Term)
 	}
 
 	// Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
@@ -66,9 +75,4 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	}
 
 	reply.Success = true
-}
-
-func (rf *Raft) sendAppendEntryRequest(server int, args *AppendEntriesArgs, reply *AppendEntriesReply) bool {
-	ok := rf.peers[server].Call("Raft.AppendEntries", args, reply)
-	return ok
 }
