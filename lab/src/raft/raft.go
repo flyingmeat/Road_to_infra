@@ -20,6 +20,8 @@ package raft
 import "sync"
 import "labrpc"
 import "time"
+import "math/rand"
+
 
 // import "bytes"
 // import "labgob"
@@ -221,12 +223,13 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	rf.votedFor = -1
 	rf.onEmptyElectionTerm = false
+	rf.closeVoteChan = make(chan bool, 1)
 	
 	rf.status = follower
 	rf.currentTerm = 0
 	rf.killChan = make(chan bool, 1)
 
-	rf.logs = []*LogEntry{}
+	rf.log = []*LogEntry{}
 	rf.committedIndex = 0
 	rf.lastApplied = 0
 
