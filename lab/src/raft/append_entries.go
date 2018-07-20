@@ -24,8 +24,8 @@ func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *Ap
 }
 
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
-	rf.Lock()
-	defer rf.Unlock()
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 
 	reply.Term = rf.currentTerm
 
