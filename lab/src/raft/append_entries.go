@@ -41,6 +41,11 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	if rf.state == CANDIDATE {
 		rf.toFollower(args.Term)
 	}
+	
+	if len(args.Entries) == 0 {
+		reply.Success = true
+		return
+	} 
 
 	// Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
 	hasPrevLog := len(rf.log) >= args.PrevLogIndex + 1

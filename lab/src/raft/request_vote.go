@@ -62,13 +62,13 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	reply.VoteGranted = false
 
 	//  Reply false if term < currentTerm (§5.1)
-	fmt.Printf("*** args.Term = %d, rf.currentTerm = %d\n", args.Term, rf.currentTerm)
+	// fmt.Printf("*** args.Term = %d, rf.currentTerm = %d\n", args.Term, rf.currentTerm)
 	if args.Term < rf.currentTerm {
 		return
 	}
 
 	// If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
-	fmt.Printf("*** rf.votedFor = %d, args.CandidateId = %d ***\n", rf.votedFor, args.CandidateId)
+	fmt.Printf("*** rf.me = %d, rf.votedFor = %d, args.CandidateId = %d ***\n", rf.me, rf.votedFor, args.CandidateId)
 	if rf.votedFor == -1 || rf.votedFor == args.CandidateId {
 		localLastLog := getLastLog(rf.log)
 
@@ -83,10 +83,11 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 			}
 		}
 
-		fmt.Printf("*** isLogUpToDate = %t ***\n", isLogUpToDate)
+		// fmt.Printf("*** isLogUpToDate = %t ***\n", isLogUpToDate)
 		if isLogUpToDate {
 			rf.votedFor = args.CandidateId
 			reply.VoteGranted = true
+			fmt.Println("VOTE GRANTED")
 			return
 		}
 	}
