@@ -54,6 +54,7 @@ func (rf *Raft) vote(voteChan chan int, replies []*RequestVoteReply) {
 		if (i != rf.me) {
 			ok := rf.sendRequestVote(i, &args, replies[i])
 			if ok {
+				fmt.Printf("term = %d, server %d send request vote to %d\n", rf.currentTerm, rf.me, i)
 				voteChan <- i
 			}
 		}
@@ -80,7 +81,7 @@ func (rf *Raft) countVotes(voteChan chan int, replies []*RequestVoteReply) {
 		isMajority := votes > len(replies) / 2
 		if (isMajority && rf.state == CANDIDATE) {
 			rf.toLeader()
-			close(voteChan)
+			// close(voteChan)
 		}
 	}
 	return
@@ -89,6 +90,7 @@ func (rf *Raft) countVotes(voteChan chan int, replies []*RequestVoteReply) {
 func (rf *Raft) runLeaderElection() {
 	rf.toCandidate()
 
+	fmt.Printf("!!!!! NEW ELECTION !!!!! me = %d\n", rf.me)
 	voteChan := make(chan int, len(rf.peers) - 1)
 	replies := make([]*RequestVoteReply, len(rf.peers))
 	for i, _ := range replies {
@@ -138,8 +140,9 @@ func (rf *Raft) run() {
 		<-time.After(electionTimeout)
 		// fmt.Printf("===server %d status %s===\n", rf.me, rf.state)
 		if rf.state != LEADER {
+			isFirstRound = !isFirstRound
 			if isFirstRound {
-				isFirstRound = !isFirstRound
+				rf.votedFor = -1
 				continue
 			}
 			// fmt.Println(rf.me, electionTimeout)
