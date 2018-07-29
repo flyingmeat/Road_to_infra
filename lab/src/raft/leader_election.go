@@ -7,19 +7,28 @@ import (
 )
 
 func (rf *Raft) toCandidate() {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
 	fmt.Printf("@@@ rf.me = %d to candicate @@@\n", rf.me)
 	rf.state = CANDIDATE
 	rf.votedFor = rf.me  // Vote for self
 }
 
 func (rf *Raft) toFollower(currentTerm int) {
-	fmt.Printf("@@@ rf.me = %d to follower @@@\n", rf.me)
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
+	fmt.Printf("@@@ rf.me = %d to follower, term = %d @@@\n", rf.me, currentTerm)
 	rf.state = FOLLOWER
 	rf.currentTerm = currentTerm
 	rf.votedFor = -1
 }
 
 func (rf *Raft) toLeader() {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
 	fmt.Printf("@@@ rf.me = %d to leader @@@\n", rf.me)
 	rf.state = LEADER
 	rf.leader = rf.me
@@ -34,9 +43,6 @@ func (rf *Raft) toLeader() {
 }
 
 func (rf *Raft) vote(voteChan chan int, replies []*RequestVoteReply) {
-	// rf.mu.Lock()
-	// defer rf.mu.Unlock()
-
 	lastLog := getLastLog(rf.log)
 	lastLogIndex, lastLogTerm := -1, -1
 	if (lastLog != nil) {
@@ -52,9 +58,13 @@ func (rf *Raft) vote(voteChan chan int, replies []*RequestVoteReply) {
 
 	for i := range rf.peers {
 		if (i != rf.me) {
+			if rf.state != CANDIDATE {
+				return
+			}
+
+			fmt.Printf("term = %d, server %d send request vote to %d\n", rf.currentTerm, rf.me, i)
 			ok := rf.sendRequestVote(i, &args, replies[i])
 			if ok {
-				fmt.Printf("term = %d, server %d send request vote to %d\n", rf.currentTerm, rf.me, i)
 				voteChan <- i
 			}
 		}
@@ -64,6 +74,10 @@ func (rf *Raft) vote(voteChan chan int, replies []*RequestVoteReply) {
 func (rf *Raft) countVotes(voteChan chan int, replies []*RequestVoteReply) {
 	votes := 1  // vote for self
 	for _ = range replies {
+		if rf.state != CANDIDATE {
+			return
+		}
+
 		peer := <-voteChan
 		reply := replies[peer]
 		fmt.Printf("=== peer %d votes to server %d: %t ===\n", peer, rf.me, reply.VoteGranted)
@@ -81,7 +95,6 @@ func (rf *Raft) countVotes(voteChan chan int, replies []*RequestVoteReply) {
 		isMajority := votes > len(replies) / 2
 		if (isMajority && rf.state == CANDIDATE) {
 			rf.toLeader()
-			// close(voteChan)
 		}
 	}
 	return
@@ -90,7 +103,7 @@ func (rf *Raft) countVotes(voteChan chan int, replies []*RequestVoteReply) {
 func (rf *Raft) runLeaderElection() {
 	rf.toCandidate()
 
-	fmt.Printf("!!!!! NEW ELECTION !!!!! me = %d\n", rf.me)
+	fmt.Printf("!!!!! NEW ELECTION !!!!! me = %d, current term = %d, last leader = %d \n", rf.me, rf.currentTerm, rf.leader)
 	voteChan := make(chan int, len(rf.peers) - 1)
 	replies := make([]*RequestVoteReply, len(rf.peers))
 	for i, _ := range replies {
@@ -117,12 +130,11 @@ func (rf *Raft) sendHeartbeat() {
 		Entries:          []LogEntry{},
 		LeaderCommit:     rf.commitIndex,
 	}
-	reply := AppendEntriesReply{}
 	for i := range rf.peers {
 		if i != rf.me {
+			reply := AppendEntriesReply{}
 			rf.sendAppendEntries(i, &args, &reply)
 			if !reply.Success {
-				fmt.Printf("### server %d to follower ###\n", rf.me)
 				rf.toFollower(reply.Term)
 			}
 		}
@@ -134,23 +146,28 @@ func (rf *Raft) sendHeartbeat() {
 func (rf *Raft) run() {
 	isFirstRound := true
 	for {
-		// If a follower receives no communication over a period of time called the election timeout,
-		// then it assumes there is no viable leader and begins an election to choose a new leader.
-		electionTimeout := time.Duration(100 + rf.me * 200 + rand.Intn(200)) * time.Microsecond
-		<-time.After(electionTimeout)
-		// fmt.Printf("===server %d status %s===\n", rf.me, rf.state)
 		if rf.state != LEADER {
+			// If a follower receives no communication over a period of time called the election timeout,
+			// then it assumes there is no viable leader and begins an election to choose a new leader.
+			electionTimeout := time.Duration(100 + rf.me * 200 + rand.Intn(200)) * time.Microsecond
+			<-time.After(electionTimeout)
+
 			isFirstRound = !isFirstRound
 			if isFirstRound {
 				rf.votedFor = -1
 				continue
 			}
-			// fmt.Println(rf.me, electionTimeout)
-			if time.Now().Sub(rf.lastHeartBeat) >= electionTimeout {
+
+			gap := time.Now().Sub(rf.lastHeartBeat)
+			fmt.Printf("=== me = %d, diff = %v, timeout = %v, isTimeOut = %t, term = %d ===\n", rf.me, gap, electionTimeout, gap >= electionTimeout, rf.currentTerm)
+			if gap >= electionTimeout {
 				go rf.runLeaderElection()
 				time.Sleep(1 * time.Second)
 			}
 		} else {
+			electionTimeout := time.Duration(10) * time.Microsecond
+			<-time.After(electionTimeout)
+
 			rf.sendHeartbeat()
 		}
 	}

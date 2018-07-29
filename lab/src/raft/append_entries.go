@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"fmt"
 	"math"
 	"time"
 )
@@ -29,6 +30,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	defer rf.mu.Unlock()
 
 	reply.Term = rf.currentTerm
+	rf.lastHeartBeat = time.Now()
 
 	//  Reply false if term < currentTerm (§5.1)
 	if args.Term < rf.currentTerm {
@@ -37,16 +39,16 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	}
 
 	rf.leader = args.Leader
-	rf.lastHeartBeat = time.Now()
 	if rf.state == CANDIDATE {
 		rf.toFollower(args.Term)
 	}
-	
+
 	if len(args.Entries) == 0 {
 		reply.Success = true
 		return
 	} 
 
+	fmt.Printf("=== i am AppendEntries len(log) = %d\n", len(args.Entries))
 	// Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
 	hasPrevLog := len(rf.log) >= args.PrevLogIndex + 1
 	if !hasPrevLog || rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
