@@ -233,7 +233,7 @@ func (cfg *config) cleanup() {
 
 // attach server i to the net.
 func (cfg *config) connect(i int) {
-	// fmt.Printf("connect(%d)\n", i)
+	fmt.Printf("connect(%d)\n", i)
 
 	cfg.connected[i] = true
 
@@ -256,7 +256,7 @@ func (cfg *config) connect(i int) {
 
 // detach server i from the net.
 func (cfg *config) disconnect(i int) {
-	// fmt.Printf("disconnect(%d)\n", i)
+	fmt.Printf("disconnect(%d)\n", i)
 
 	cfg.connected[i] = false
 
@@ -310,6 +310,7 @@ func (cfg *config) checkOneLeader() int {
 		}
 
 		lastTermWithLeader := -1
+		fmt.Println(leaders)
 		for term, leaders := range leaders {
 			if len(leaders) > 1 {
 				cfg.t.Fatalf("term %d has %d (>1) leaders", term, len(leaders))

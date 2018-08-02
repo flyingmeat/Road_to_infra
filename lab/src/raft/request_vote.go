@@ -1,6 +1,5 @@
 package raft
 
- import "fmt"
 
 // example RequestVote RPC arguments structure.
 // field names must start with capital letters!
@@ -55,7 +54,6 @@ func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *Reques
 // example RequestVote RPC handler.
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (2A, 2B).
-	// fmt.Printf("server %d recevied request from %d\n", rf.me, args.CandidateId)
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
@@ -68,7 +66,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	}
 
 	// If votedFor is null or candidateId, and candidate’s log is at least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
-	fmt.Printf("*** rf.me = %d, rf.votedFor = %d, args.CandidateId = %d ***\n", rf.me, rf.votedFor, args.CandidateId)
+	//fmt.Printf("*** rf.me = %d, rf.votedFor = %d, args.CandidateId = %d ***\n", rf.me, rf.votedFor, args.CandidateId)
 	if rf.votedFor == -1 || rf.votedFor == args.CandidateId {
 		localLastLog := getLastLog(rf.log)
 

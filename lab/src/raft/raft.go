@@ -97,10 +97,10 @@ type Raft struct {
 // believes it is the leader.
 func (rf *Raft) GetState() (int, bool) {
 
-	var term int
-	var isleader bool
+	//var term int
+	//var isleader bool
 	// Your code here (2A).
-	return term, isleader
+	return rf.currentTerm, rf.leader == rf.me
 }
 
 
@@ -196,6 +196,8 @@ func Make(peers []*labrpc.ClientEnd, me int, persister *Persister, applyCh chan 
 	rf.persister = persister
 	rf.me = me
 	rf.votedFor = -1
+	rf.state = ""
+	rf.leader = -1
 
 	// Your initialization code here (2A, 2B, 2C).
 
