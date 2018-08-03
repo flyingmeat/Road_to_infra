@@ -30,7 +30,6 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	defer rf.mu.Unlock()
 
 	reply.Term = rf.currentTerm
-	rf.lastHeartBeat = time.Now()
 
 	//  Reply false if term < currentTerm (§5.1)
 	if args.Term < rf.currentTerm {
@@ -42,6 +41,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	rf.toFollower(args.Term)
 
 	if len(args.Entries) == 0 {
+		rf.lastHeartBeat = time.Now()
 		reply.Success = true
 		return
 	} 

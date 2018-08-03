@@ -150,9 +150,9 @@ func (rf *Raft) run() {
 				continue
 			}
 
-			if rf.state == CANDIDATE {
-				continue
-			}
+			//if rf.state == CANDIDATE {
+			//	continue
+			//}
 
 			gap := time.Now().Sub(rf.lastHeartBeat)
 			fmt.Printf("=== me = %d, diff = %v, timeout = %v, isTimeOut = %t, term = %d ===\n", rf.me, gap, electionTimeout, gap >= electionTimeout, rf.currentTerm)
