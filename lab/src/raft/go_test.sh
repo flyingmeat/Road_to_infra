@@ -6,3 +6,4 @@ for i in `seq $1`; do
 done
 success=$(grep -E '^PASS$' test_result.log | wc -l)
 echo "$success / $1 passed"
+rm test_result.log
