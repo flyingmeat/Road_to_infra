@@ -18,6 +18,7 @@ package raft
 //
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -160,12 +161,25 @@ func (rf *Raft) readPersist(data []byte) {
 //
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	index := -1
-	term := -1
-	isLeader := true
+	//term := -1
+	//isLeader := true
 
 	// Your code here (2B).
+	term, isLeader := rf.GetState()
+	if !isLeader {
+		return index, term, isLeader
+	}
 
+	lastLog := getLastLog(rf.log)
+	if lastLog != nil {
+		index = lastLog.Index + 1
+	} else {
+		index = 1
+	}
 
+	entry := LogEntry{Index: index, Term: rf.currentTerm, Command: command}
+	rf.log = append(rf.log, entry)
+	fmt.Printf("### Start(cmd = %d): log = %v, index = %d ###\n", command, rf.log, index)
 	return index, term, isLeader
 }
 

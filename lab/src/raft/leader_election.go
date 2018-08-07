@@ -158,7 +158,7 @@ func (rf *Raft) run() {
 			fmt.Printf("=== me = %d, diff = %v, timeout = %v, isTimeOut = %t, term = %d ===\n", rf.me, gap, electionTimeout, gap >= electionTimeout, rf.currentTerm)
 			if gap >= electionTimeout {
 				go rf.runLeaderElection()
-				//time.Sleep(1 * time.Second)
+				time.Sleep(1 * time.Second)
 			}
 		} else {
 			rf.sendHeartbeat()

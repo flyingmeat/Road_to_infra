@@ -1,7 +1,7 @@
 package raft
 
 import (
-	//"fmt"
+	"fmt"
 	"math"
 	"time"
 )
@@ -40,6 +40,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	rf.leader = args.Leader
 	rf.toFollower(args.Term)
 
+	fmt.Printf("$$$ AppendEntries from %d: log = %v $$$\n", args.Leader, args.Entries)
 	if len(args.Entries) == 0 {
 		rf.lastHeartBeat = time.Now()
 		reply.Success = true
