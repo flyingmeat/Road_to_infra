@@ -1,0 +1,80 @@
+package raft
+
+import "fmt"
+
+func (rf *Raft) replicate(replicateChan chan int, replies []*AppendEntriesReply) {
+	lastLogIndex := 0
+	lastLogTerm := 0
+	if lastLog := getLastLog(rf.log); lastLog != nil {
+		lastLogIndex = lastLog.Index
+		lastLogTerm = lastLog.Term
+	}
+
+	args := AppendEntriesArgs{
+		Term:             rf.currentTerm,
+		Leader:           rf.me,
+		PrevLogIndex:     lastLogIndex,
+		PrevLogTerm:      lastLogTerm,
+		Entries:          rf.log[rf.commitIndex:],
+		LeaderCommit:     rf.commitIndex,
+	}
+
+	for i := range rf.peers {
+		if (i != rf.me) {
+			if rf.state != LEADER {
+				return
+			}
+
+			ok := rf.sendAppendEntries(i, &args, replies[i])
+			// TODO(ling): retry until commitIndex <= reply.commitIndex
+			if ok {
+				replicateChan <- i
+				if !replies[i].Success {
+					rf.toFollower(replies[i].Term)
+				}
+			}
+		}
+	}
+}
+
+func (rf *Raft) countReplicas(replicateChan chan int, replies []*AppendEntriesReply) {
+	replicas := 1  // replicate for self
+	for _ = range replies {
+		fmt.Printf("=== countReplicas: rf.me = %d, rf.state = %s ===\n", rf.me, rf.state)
+		if rf.state != LEADER {
+			return
+		}
+
+		peer := <-replicateChan
+		reply := replies[peer]
+
+		// If AppendEntries RPC received from new leader: convert to follower
+		if (reply.Term > rf.currentTerm) {
+			rf.toFollower(reply.Term)
+			return
+		}
+		if reply.Success {
+			replicas += 1
+		}
+
+		// If replicas received from majority of servers: apply
+		fmt.Printf("=== %d replicas for rf.me = %d ===\n", replicas, rf.me)
+		isMajority := replicas >= len(replies) / 2
+		if (isMajority && rf.state == LEADER) {
+			// apply
+		}
+	}
+	return
+}
+
+
+func (rf *Raft) runRaplication() {
+	replicateChan := make(chan int, len(rf.peers) - 1)
+	replies := make([]*AppendEntriesReply, len(rf.peers))
+	for i, _ := range replies {
+		replies[i] = &AppendEntriesReply{}
+	}
+
+	rf.replicate(replicateChan, replies)
+	rf.countReplicas(replicateChan, replies)
+}

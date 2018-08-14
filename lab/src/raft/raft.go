@@ -212,6 +212,7 @@ func Make(peers []*labrpc.ClientEnd, me int, persister *Persister, applyCh chan 
 	rf.votedFor = -1
 	rf.state = ""
 	rf.leader = -1
+	rf.commitIndex = 0
 
 	// Your initialization code here (2A, 2B, 2C).
 

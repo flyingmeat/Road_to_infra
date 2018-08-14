@@ -40,7 +40,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	rf.leader = args.Leader
 	rf.toFollower(args.Term)
 
-	fmt.Printf("$$$ AppendEntries from %d: log = %v $$$\n", args.Leader, args.Entries)
+	fmt.Printf("$$$ AppendEntries from %d to %d: log = %v $$$\n", args.Leader, rf.me, args.Entries)
 	if len(args.Entries) == 0 {
 		rf.lastHeartBeat = time.Now()
 		reply.Success = true
