@@ -61,7 +61,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	for _, leaderEntry := range args.Entries {
 		if leaderEntry.Index <= len(rf.log) {
 			if leaderEntry.Term != rf.log[leaderEntry.Index - 1].Term {
-				rf.log = rf.log[:leaderEntry.Index - 1]
+				rf.log = rf.log[:leaderEntry.Index]
 				lastSameIndex = leaderEntry.Index
 				break
 			}
@@ -69,9 +69,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	}
 	// Append any new entries not already in the log
 	fmt.Printf("lastSameIndex = %d, args.Entries = %v\n", lastSameIndex, args.Entries)
-	if lastSameIndex > 0 {
-		rf.log = append(rf.log, args.Entries[lastSameIndex - 1:]...)
-	}
+	rf.log = append(rf.log, args.Entries[lastSameIndex:]...)
 	fmt.Printf("rf.me = %d, rf.log = %v\n", rf.me, rf.log)
 
 	// If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)

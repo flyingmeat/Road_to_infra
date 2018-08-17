@@ -87,7 +87,7 @@ func (rf *Raft) countVotes(voteChan chan int, replies []*RequestVoteReply) {
 		isMajority := votes >= len(replies) / 2
 		if (isMajority && rf.state == CANDIDATE) {
 			rf.toLeader()
-			rf.runRaplication()
+			go rf.runRaplication()
 		}
 	}
 	return

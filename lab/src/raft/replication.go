@@ -11,6 +11,10 @@ func (rf *Raft) retry(peer int, req *AppendEntriesArgs, res *AppendEntriesReply)
 
 
 func (rf *Raft) replicate(replicateChan chan int, replies []*AppendEntriesReply) {
+	if len(rf.log) == 0 {
+		return
+	}
+	
 	lastLogIndex := 0
 	lastLogTerm := 0
 	if lastLog := getLastLog(rf.log); lastLog != nil {
@@ -23,29 +27,17 @@ func (rf *Raft) replicate(replicateChan chan int, replies []*AppendEntriesReply)
 			if rf.state != LEADER {
 				return
 			}
-			
-			// TODO: still send, though the majority are committed
-			logStartIndex := rf.commitIndex
-			if logStartIndex >= len(rf.log) {
-				continue
-			}
+
 			args := AppendEntriesArgs{
 				Term:             rf.currentTerm,
 				Leader:           rf.me,
 				PrevLogIndex:     lastLogIndex,
 				PrevLogTerm:      lastLogTerm,
-				Entries:          rf.log[logStartIndex:],
+				Entries:          rf.log[rf.matchIndex[i]:rf.nextIndex[i]],
 				LeaderCommit:     rf.commitIndex,
 			}
 
-			// TODO: try matchIndex ~ nextIndex
 			rf.retry(i, &args, replies[i])
-			for !replies[i].Success && logStartIndex > 0 {
-				// rf.toFollower(replies[i].Term)
-				logStartIndex--
-				args.Entries = rf.log[logStartIndex:]
-				rf.retry(i, &args, replies[i])
-			}
 			replicateChan <- i
 		}
 	}
@@ -54,7 +46,6 @@ func (rf *Raft) replicate(replicateChan chan int, replies []*AppendEntriesReply)
 func (rf *Raft) countReplicas(replicateChan chan int, replies []*AppendEntriesReply) {
 	replicas := 1  // replicate for self
 	for _ = range replies {
-		fmt.Printf("=== countReplicas: rf.me = %d, rf.state = %s ===\n", rf.me, rf.state)
 		if rf.state != LEADER {
 			return
 		}
@@ -75,8 +66,10 @@ func (rf *Raft) countReplicas(replicateChan chan int, replies []*AppendEntriesRe
 		fmt.Printf("=== %d replicas for rf.me = %d ===\n", replicas, rf.me)
 		isMajority := replicas >= len(replies) / 2
 		if (isMajority && rf.state == LEADER) {
-			// TODO: update matchIndex & nextIndex
-			rf.commitIndex = len(rf.log)
+			lastLog := getLastLog(rf.log)
+			rf.matchIndex[peer] = lastLog.Index
+			rf.nextIndex[peer] = lastLog.Index + 1
+			rf.commitIndex = lastLog.Index
 		}
 	}
 	return
