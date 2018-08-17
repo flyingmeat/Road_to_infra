@@ -2,6 +2,14 @@ package raft
 
 import "fmt"
 
+func (rf *Raft) retry(peer int, req *AppendEntriesArgs, res *AppendEntriesReply) {
+	ok := false
+	for !ok {
+		ok = rf.sendAppendEntries(peer, req, res)
+	}
+}
+
+
 func (rf *Raft) replicate(replicateChan chan int, replies []*AppendEntriesReply) {
 	lastLogIndex := 0
 	lastLogTerm := 0
@@ -10,29 +18,35 @@ func (rf *Raft) replicate(replicateChan chan int, replies []*AppendEntriesReply)
 		lastLogTerm = lastLog.Term
 	}
 
-	args := AppendEntriesArgs{
-		Term:             rf.currentTerm,
-		Leader:           rf.me,
-		PrevLogIndex:     lastLogIndex,
-		PrevLogTerm:      lastLogTerm,
-		Entries:          rf.log[rf.commitIndex:],
-		LeaderCommit:     rf.commitIndex,
-	}
-
 	for i := range rf.peers {
 		if (i != rf.me) {
 			if rf.state != LEADER {
 				return
 			}
-
-			ok := rf.sendAppendEntries(i, &args, replies[i])
-			// TODO(ling): retry until commitIndex <= reply.commitIndex
-			if ok {
-				replicateChan <- i
-				if !replies[i].Success {
-					rf.toFollower(replies[i].Term)
-				}
+			
+			// TODO: still send, though the majority are committed
+			logStartIndex := rf.commitIndex
+			if logStartIndex >= len(rf.log) {
+				continue
 			}
+			args := AppendEntriesArgs{
+				Term:             rf.currentTerm,
+				Leader:           rf.me,
+				PrevLogIndex:     lastLogIndex,
+				PrevLogTerm:      lastLogTerm,
+				Entries:          rf.log[logStartIndex:],
+				LeaderCommit:     rf.commitIndex,
+			}
+
+			// TODO: try matchIndex ~ nextIndex
+			rf.retry(i, &args, replies[i])
+			for !replies[i].Success && logStartIndex > 0 {
+				// rf.toFollower(replies[i].Term)
+				logStartIndex--
+				args.Entries = rf.log[logStartIndex:]
+				rf.retry(i, &args, replies[i])
+			}
+			replicateChan <- i
 		}
 	}
 }
@@ -61,7 +75,8 @@ func (rf *Raft) countReplicas(replicateChan chan int, replies []*AppendEntriesRe
 		fmt.Printf("=== %d replicas for rf.me = %d ===\n", replicas, rf.me)
 		isMajority := replicas >= len(replies) / 2
 		if (isMajority && rf.state == LEADER) {
-			// apply
+			// TODO: update matchIndex & nextIndex
+			rf.commitIndex = len(rf.log)
 		}
 	}
 	return

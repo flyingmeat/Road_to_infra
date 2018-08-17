@@ -180,6 +180,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	entry := LogEntry{Index: index, Term: rf.currentTerm, Command: command}
 	rf.log = append(rf.log, entry)
 	fmt.Printf("### Start(cmd = %d): log = %v, index = %d ###\n", command, rf.log, index)
+	// start replication
 	return index, term, isLeader
 }
 
@@ -213,6 +214,7 @@ func Make(peers []*labrpc.ClientEnd, me int, persister *Persister, applyCh chan 
 	rf.state = ""
 	rf.leader = -1
 	rf.commitIndex = 0
+	rf.log = []LogEntry{}
 
 	// Your initialization code here (2A, 2B, 2C).
 

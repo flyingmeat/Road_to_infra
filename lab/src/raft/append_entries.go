@@ -40,16 +40,17 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	rf.leader = args.Leader
 	rf.toFollower(args.Term)
 
-	fmt.Printf("$$$ AppendEntries from %d to %d: log = %v $$$\n", args.Leader, rf.me, args.Entries)
 	if len(args.Entries) == 0 {
 		rf.lastHeartBeat = time.Now()
 		reply.Success = true
 		return
 	} 
 
+
+	fmt.Printf("$$$ AppendEntries from %d to %d: log = %v $$$\n", args.Leader, rf.me, args.Entries)
 	// Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
 	hasPrevLog := len(rf.log) >= args.PrevLogIndex + 1
-	if !hasPrevLog || rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
+	if hasPrevLog && rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
 		reply.Success = false
 		return
 	}
@@ -67,7 +68,11 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		}
 	}
 	// Append any new entries not already in the log
-	rf.log = append(rf.log, args.Entries[lastSameIndex - 1:]...)
+	fmt.Printf("lastSameIndex = %d, args.Entries = %v\n", lastSameIndex, args.Entries)
+	if lastSameIndex > 0 {
+		rf.log = append(rf.log, args.Entries[lastSameIndex - 1:]...)
+	}
+	fmt.Printf("rf.me = %d, rf.log = %v\n", rf.me, rf.log)
 
 	// If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
 	if (args.LeaderCommit > rf.commitIndex) {
