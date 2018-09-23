@@ -310,7 +310,7 @@ func (cfg *config) checkOneLeader() int {
 		}
 
 		lastTermWithLeader := -1
-		fmt.Println(leaders)
+		//fmt.Println(leaders)
 		for term, leaders := range leaders {
 			if len(leaders) > 1 {
 				cfg.t.Fatalf("term %d has %d (>1) leaders", term, len(leaders))
@@ -367,7 +367,9 @@ func (cfg *config) nCommitted(index int) (int, interface{}) {
 
 		cfg.mu.Lock()
 		cmd1, ok := cfg.logs[i][index]
-		fmt.Printf("=== test === i = %d, log = %v, cmd1 = %d, ok = %t \n", i, cfg.logs[i], cmd1, ok)
+		if len(cfg.logs[i]) > 1 {
+			fmt.Printf("=== test === server = %d, rf.log = %v, cmd1 = %d, ok = %t \n", i, cfg.logs[i], cmd1, ok)
+		}
 		cfg.mu.Unlock()
 
 		if ok {

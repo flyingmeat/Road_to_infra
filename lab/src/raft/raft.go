@@ -82,6 +82,7 @@ type Raft struct {
   	// Volatile state on all servers
 	commitIndex   int
 	lastApplied   int
+	applyChan     chan ApplyMsg
 
 	// Volatile state on leaders
 	nextIndex     []int
@@ -213,10 +214,12 @@ func Make(peers []*labrpc.ClientEnd, me int, persister *Persister, applyCh chan 
 
 	// Volatile state on all servers
 	rf.commitIndex = 0
+	rf.lastApplied = 0
+	rf.applyChan = applyCh
 
 	// Volatile state on leaders
-	rf.nextIndex = make([]int, len(rf.peers))
 	rf.matchIndex = make([]int, len(rf.peers))
+	rf.nextIndex = newNextIndex(len(rf.peers))
 
 	// Other states
 	rf.state = ""

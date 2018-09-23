@@ -1,7 +1,7 @@
 package raft
 
 import (
-	"fmt"
+	//"fmt"
 	"math"
 	"time"
 )
@@ -47,7 +47,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	} 
 
 
-	fmt.Printf("$$$ AppendEntries from %d to %d: log = %v $$$\n", args.Leader, rf.me, args.Entries)
+	//fmt.Printf("$$$ AppendEntries from %d to %d: log = %v $$$\n", args.Leader, rf.me, args.Entries)
 	// Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
 	hasPrevLog := len(rf.log) >= args.PrevLogIndex + 1
 	if hasPrevLog && rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
@@ -59,28 +59,36 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	// delete the existing entry and all that follow it (§5.3)
 	var lastSameIndex int
 	for _, leaderEntry := range args.Entries {
+		//fmt.Println("leaderEntry.Index =", leaderEntry.Index, "len(rf.log =", len(rf.log))
 		if leaderEntry.Index <= len(rf.log) {
 			if leaderEntry.Term != rf.log[leaderEntry.Index - 1].Term {
-				rf.log = rf.log[:leaderEntry.Index]
+				rf.log = rf.log[:leaderEntry.Index - 1]
 				lastSameIndex = leaderEntry.Index
 				break
 			}
 		}
 	}
 	// Append any new entries not already in the log
-	fmt.Printf("lastSameIndex = %d, args.Entries = %v\n", lastSameIndex, args.Entries)
+	//fmt.Printf("lastSameIndex = %d, args.Entries = %v\n", lastSameIndex, args.Entries)
 	rf.log = append(rf.log, args.Entries[lastSameIndex:]...)
-	fmt.Printf("rf.me = %d, rf.log = %v\n", rf.me, rf.log)
+	lastNewEntry := getLastLog(args.Entries)
+	//fmt.Printf("rf.me = %d, rf.log = %v\n", rf.me, rf.log)
 
 	// If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
 	if (args.LeaderCommit > rf.commitIndex) {
 		lastNewEntryIndex := -1
-		lastNewEntry := getLastLog(args.Entries)
 		if lastNewEntry != nil {
 			lastNewEntryIndex = lastNewEntry.Index
 		}
 		rf.commitIndex = int(math.Min(float64(args.LeaderCommit), float64(lastNewEntryIndex)))
-		// TODO(ling): apply the messages between lastApplied and commitIndex
+	}
+
+	// apply the messages between lastApplied and commitIndex
+	if rf.commitIndex > rf.lastApplied {
+		for i := rf.lastApplied + 1; i <= rf.commitIndex; i++ {
+			rf.applyChan <- ApplyMsg{true, lastNewEntry.Command, lastNewEntry.Index}
+		}
+		rf.lastApplied = rf.commitIndex
 	}
 
 	reply.Success = true

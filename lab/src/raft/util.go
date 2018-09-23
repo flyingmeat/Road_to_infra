@@ -20,3 +20,12 @@ func getLastLog(log []LogEntry) *LogEntry {
 	}
 	return &log[logSize - 1]
 }
+
+// newNextIndex returns a new nextIndex.
+func newNextIndex(size int) []int {
+	nextIndex := make([]int, size)
+	for i, _ := range nextIndex {
+		nextIndex[i] = 1
+	}
+	return nextIndex
+}

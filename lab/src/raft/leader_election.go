@@ -1,13 +1,13 @@
 package raft
 
 import (
+	//"fmt"
 	"math/rand"
 	"time"
-	"fmt"
 )
 
 func (rf *Raft) toCandidate() {
-	fmt.Printf("@@@ rf.me = %d to candicate @@@\n", rf.me)
+	//fmt.Printf("@@@ rf.me = %d to candicate @@@\n", rf.me)
 	rf.state = CANDIDATE
 	rf.votedFor = rf.me  // Vote for self
 }
@@ -23,11 +23,11 @@ func (rf *Raft) toLeader() {
 	rf.state = LEADER
 	rf.leader = rf.me
 	rf.currentTerm++  // Increment currentTerm
-	fmt.Printf("@@@ rf.me = %d to leader, new term = %d @@@\n", rf.me, rf.currentTerm)
+	//fmt.Printf("@@@ rf.me = %d to leader, new term = %d @@@\n", rf.me, rf.currentTerm)
 
 	// clear states
-	rf.nextIndex = make([]int, len(rf.peers))
 	rf.matchIndex = make([]int, len(rf.peers))
+	rf.nextIndex = newNextIndex(len(rf.peers))
 
 	// send heartbeat
 	rf.sendHeartbeat()
@@ -64,7 +64,7 @@ func (rf *Raft) vote(voteChan chan int, replies []*RequestVoteReply) {
 func (rf *Raft) countVotes(voteChan chan int, replies []*RequestVoteReply) {
 	votes := 1  // vote for self
 	for _ = range replies {
-		fmt.Printf("=== countVotes: rf.me = %d, rf.state = %s ===\n", rf.me, rf.state)
+		//fmt.Printf("=== countVotes: rf.me = %d, rf.state = %s ===\n", rf.me, rf.state)
 		if rf.state != CANDIDATE {
 			return
 		}
@@ -83,7 +83,7 @@ func (rf *Raft) countVotes(voteChan chan int, replies []*RequestVoteReply) {
 		}
 
 		// If votes received from majority of servers: become leader
-		fmt.Printf("=== %d votes for rf.me = %d ===\n", votes, rf.me)
+		//fmt.Printf("=== %d votes for rf.me = %d ===\n", votes, rf.me)
 		isMajority := votes >= len(replies) / 2
 		if (isMajority && rf.state == CANDIDATE) {
 			rf.toLeader()
@@ -151,15 +151,15 @@ func (rf *Raft) run() {
 				continue
 			}
 
-			if rf.state == CANDIDATE {
-				continue
-			}
+			//if rf.state == CANDIDATE {
+			//	continue
+			//}
 
 			gap := time.Now().Sub(rf.lastHeartBeat)
-			fmt.Printf("=== me = %d, diff = %v, timeout = %v, isTimeOut = %t, term = %d ===\n", rf.me, gap, electionTimeout, gap >= electionTimeout, rf.currentTerm)
+			//fmt.Printf("=== me = %d, diff = %v, timeout = %v, isTimeOut = %t, term = %d ===\n", rf.me, gap, electionTimeout, gap >= electionTimeout, rf.currentTerm)
 			if gap >= electionTimeout {
 				go rf.runLeaderElection()
-				time.Sleep(1 * time.Second)
+				//time.Sleep(1 * time.Second)
 			}
 		} else {
 			rf.sendHeartbeat()

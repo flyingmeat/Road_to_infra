@@ -22,6 +22,7 @@ func (rf *Raft) replicate(replicateChan chan int, replies []*AppendEntriesReply)
 		lastLogTerm = lastLog.Term
 	}
 
+	fmt.Println("rf.log =", rf.log, "| rf.matchIndex =", rf.matchIndex, "| rf.nextIndex =", rf.nextIndex)
 	for i := range rf.peers {
 		if (i != rf.me) {
 			if rf.state != LEADER {
@@ -36,6 +37,7 @@ func (rf *Raft) replicate(replicateChan chan int, replies []*AppendEntriesReply)
 				Entries:          rf.log[rf.matchIndex[i]:rf.nextIndex[i]],
 				LeaderCommit:     rf.commitIndex,
 			}
+			fmt.Println("=== to replicate, leader =", rf.me, "| peer =", i, "| args =", args)
 
 			rf.retry(i, &args, replies[i])
 			replicateChan <- i
@@ -45,7 +47,9 @@ func (rf *Raft) replicate(replicateChan chan int, replies []*AppendEntriesReply)
 
 func (rf *Raft) countReplicas(replicateChan chan int, replies []*AppendEntriesReply) {
 	replicas := 1  // replicate for self
-	for _ = range replies {
+	replicatedPeers := []int{rf.me}
+
+	for i := 1; i < len(replies); i++ {
 		if rf.state != LEADER {
 			return
 		}
@@ -60,18 +64,25 @@ func (rf *Raft) countReplicas(replicateChan chan int, replies []*AppendEntriesRe
 		}
 		if reply.Success {
 			replicas += 1
-		}
-
-		// If replicas received from majority of servers: apply
-		fmt.Printf("=== %d replicas for rf.me = %d ===\n", replicas, rf.me)
-		isMajority := replicas >= len(replies) / 2
-		if (isMajority && rf.state == LEADER) {
-			lastLog := getLastLog(rf.log)
-			rf.matchIndex[peer] = lastLog.Index
-			rf.nextIndex[peer] = lastLog.Index + 1
-			rf.commitIndex = lastLog.Index
+			replicatedPeers = append(replicatedPeers, peer)
 		}
 	}
+
+	// If replicas received from majority of servers: apply
+	isMajority := replicas >= len(replies) / 2
+	if (isMajority && rf.state == LEADER) {
+		lastLog := getLastLog(rf.log)
+		for peer := range replicatedPeers {
+			rf.matchIndex[peer] = lastLog.Index
+			rf.nextIndex[peer] = lastLog.Index + 1
+		}
+		for i := rf.commitIndex + 1; i <= lastLog.Index; i++ {
+			rf.applyChan <- ApplyMsg{true, lastLog.Command, i}
+		}
+		rf.commitIndex = lastLog.Index
+		fmt.Println("*** replicate for rf.me =", rf.me, "is done:", "rf.matchIndex =", rf.matchIndex, "| rf.nextIndex =", rf.nextIndex, "| rf.commitIndex =", rf.commitIndex)
+	}
+
 	return
 }
 
