@@ -14,9 +14,9 @@ func (rf *Raft) SendHeartbeat() {
 		if server == rf.me {
 			continue
 		}
-		rf.mu.Lock()
+		rf.RequestLock([]string{"currentTerm"})
 		currentTerm := rf.currentTerm
-		rf.mu.Unlock()
+		rf.ReleaseLock([]string{"currentTerm"})
 		go func(currentTerm int, server int) {
 			args := AppendEntriesArgs{currentTerm, rf.me, []*LogEntry{}, 0, 0, rf.committedIndex}
 			reply := AppendEntriesReply{}
@@ -32,6 +32,8 @@ func (rf *Raft) SendHeartbeat() {
 }
 
 func (rf *Raft) BackToFollower(newTerm int) {
+	rf.RequestLock([]string{"currentTerm", "votedFor", "status", "onEmptyElectionTerm"})
+	defer rf.ReleaseLock([]string{"currentTerm", "votedFor", "status", "onEmptyElectionTerm"})
 	rf.currentTerm = newTerm
 	rf.votedFor = -1
 	if rf.status == candidate {
@@ -45,6 +47,8 @@ func (rf *Raft) BackToFollower(newTerm int) {
 }
 
 func (rf *Raft) UpToLeader(newTerm int) {
+	rf.RequestLock([]string{"status", "currentTerm", "clockInterval", "nextIndex", "matchIndex"})
+	defer rf.ReleaseLock([]string{"status", "currentTerm", "clockInterval", "nextIndex", "matchIndex"})
 	rf.status = leader
 	rf.currentTerm = newTerm
 	rf.clockInterval = time.Duration(rand.Intn(50) + 100)
@@ -66,14 +70,14 @@ func (rf *Raft) LeaderElection() {
 
 				if !isLeader {
 					// if time out start election round
-					rf.mu.Lock()
+					rf.RequestLock([]string{"onEmptyElectionTerm", "status", "votedFor"})
 					rf.onEmptyElectionTerm = !rf.onEmptyElectionTerm
 					// if candidate and started a vote previous round , close previous vote
 					if rf.status == candidate && rf.onEmptyElectionTerm{
 						rf.votedFor = -1
 						rf.closeVoteChan <- true
 					}
-					rf.mu.Unlock()
+					rf.ReleaseLock([]string{"onEmptyElectionTerm", "status", "votedFor"})
 
 					if rf.onEmptyElectionTerm {
 						continue
@@ -96,12 +100,12 @@ func (rf *Raft) StartElection() {
 	// 2. Receive heartbeat from higher term leader
 	// 3. local next term is smaller than other server, known by requestVoteReply
 
-	rf.mu.Lock()
+	rf.RequestLock([]string{"status", "votedFor", "currentTerm"})
 	newTerm := rf.currentTerm + 1
 	rf.status = candidate
 	rf.votedFor = rf.me
 	rf.closeVoteChan = make(chan bool, 1)
-	rf.mu.Unlock()
+	rf.ReleaseLock([]string{"status", "votedFor", "currentTerm"})
 
 	// channel used to close the send vote request proccesses
 	closeSendVoteRequestChan := make(chan bool, 1)
@@ -162,9 +166,7 @@ func (rf *Raft) CountVote(newTerm int, closeSendVoteRequestChan chan bool) {
 				voteCount++
 				if voteCount > len(rf.log) / 2 {
 					// Change to leader
-					rf.mu.Lock()
 					rf.UpToLeader(newTerm)
-					rf.mu.Unlock()
 					closeSendVoteRequestChan <- true
 					rf.SendHeartbeat()
 					return

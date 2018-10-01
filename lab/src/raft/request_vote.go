@@ -28,7 +28,8 @@ type RequestVoteReply struct {
 //
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (2A, 2B).
-	rf.mu.Lock()
+	rf.RequestLock([]string{"log", "currentTerm", "votedFor"})
+	defer rf.ReleaseLock([]string{"log", "currentTerm", "votedFor"})
 
 	localLastLogIndex := len(rf.log)
 	localLastLogTerm := 0
@@ -48,8 +49,6 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		reply.VoteGranted = false
 	}
 	reply.Term = rf.currentTerm
-
-	rf.mu.Unlock()
 }
 
 //
