@@ -21,6 +21,8 @@ import "sync"
 import "labrpc"
 import "time"
 import "math/rand"
+import "reflect"
+
 
 
 // import "bytes"
@@ -102,6 +104,40 @@ type Raft struct {
 	applyCh chan ApplyMsg
 	killChan chan bool
 
+	attributesLocks map[string]*sync.Mutex
+
+}
+
+func (rf *Raft) GenerateLocks() {
+	noLocksFields := make(map[string]struct{})
+	noLocksFields["mu"] = struct{}{}
+	noLocksFields["peers"] = struct{}{}
+	noLocksFields["persister"] = struct{}{}
+	noLocksFields["me"] = struct{}{}
+	noLocksFields["attributesLocks"] = struct{}{}
+
+	fields := reflect.ValueOf(rf).Elem()
+
+	for i := 0; i < fields.NumField(); i++ {
+		field := fields.Type().Field(i)
+		_, exists := noLocksFields[field.Name]
+		if exists {
+			continue
+		}
+		rf.attributesLocks[field.Name] = &sync.Mutex{}
+	}
+}
+
+func (rf *Raft) RequestLock(fields []string) {
+	for _, field := range fields {
+		rf.attributesLocks[field].Lock()
+	}
+}
+
+func (rf *Raft) ReleaseLock(fields []string) {
+	for _, field := range fields {
+		rf.attributesLocks[field].Unlock()
+	}	
 }
 
 // return currentTerm and whether this server
@@ -111,10 +147,10 @@ func (rf *Raft) GetState() (int, bool) {
 	var term int
 	var isleader bool
 	// Your code here (2A).
-	rf.mu.Lock()
+	rf.RequestLock([]string{"status", "currentTerm"})
 	term = rf.currentTerm
 	isleader = (rf.status == leader)
-	rf.mu.Unlock()
+	rf.ReleaseLock([]string{"status", "currentTerm"})
 	return term, isleader
 }
 
@@ -239,7 +275,11 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	// Start timing
 	rf.clockInterval = time.Duration(rand.Intn(150) + 200 + (rf.me*100)%150)
 	rf.clock = time.NewTimer(rf.clockInterval*time.Millisecond)
+
+	rf.attributesLocks = make(map[string]*sync.Mutex)
 	rf.mu.Unlock()
+
+	rf.GenerateLocks()
 
 	go rf.LeaderElection()
 

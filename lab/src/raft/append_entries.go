@@ -18,13 +18,13 @@ type AppendEntriesReply struct {
 }
 
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
-	rf.mu.Lock()
+	rf.RequestLock([]string{"currentTerm", "committedIndex", "lastApplied"})
 	reply.Term = rf.currentTerm
 
-	defer rf.mu.Unlock()
 
 	if args.Term < rf.currentTerm {
 		reply.Success = false
+		rf.ReleaseLock([]string{"currentTerm", "committedIndex", "lastApplied"})
 		return
 	}
 
@@ -39,13 +39,16 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		}
 		rf.lastApplied = rf.committedIndex
 	}
-
+	rf.ReleaseLock([]string{"currentTerm", "committedIndex", "lastApplied"})
+	rf.BackToFollower(args.Term)
 	if len(args.Entries) == 0 {
 		// Handle heartbeat
 		reply.Success = true
-		rf.BackToFollower(args.Term)
+		return
 	}
 
+	rf.RequestLock([]string{"log"})
+	defer rf.ReleaseLock([]string{"log"})
 	if rf.IsLogConsecutive() && (args.PrevLogIndex <= 0 || rf.log[args.PrevLogIndex - 1].Term == args.PrevLogTerm) {
 		reply.Success = true
 		for i := 0; i < len(args.Entries); i++ {
