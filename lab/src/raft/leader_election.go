@@ -36,7 +36,7 @@ func (rf *Raft) toLeader() {
 	// send heartbeat
 	rf.sendHeartbeat()
 	rf.releaseLocks("state", "leader", "currentTerm", "matchIndex", "nextIndex")
-	fmt.Printf("@@@ rf.me = %d to leader, new term = %d @@@\n", rf.me, rf.currentTerm)
+	// fmt.Printf("@@@ rf.me = %d to leader, new term = %d @@@\n", rf.me, rf.currentTerm)
 }
 
 func (rf *Raft) vote(voteChan chan int, replies []*RequestVoteReply) {
@@ -131,11 +131,13 @@ func (rf *Raft) sendHeartbeat() {
 	}
 	for i := range rf.peers {
 		if i != rf.me {
+			// fmt.Println("=== send heartbeat from", rf.me, "to", i, "leader =", rf.leader)
 			reply := AppendEntriesReply{}
 			rf.sendAppendEntries(i, &args, &reply)
 			if !reply.Success {
 				rf.toFollower(reply.Term)
 			}
+			// fmt.Println("done from", rf.me, "to", i)
 		}
 	}
 }
@@ -159,12 +161,16 @@ func (rf *Raft) run() {
 				continue
 			}
 
-			//if rf.state == CANDIDATE {
-			//	continue
-			//}
-
+			if rf.state == CANDIDATE {
+				continue
+			}
+			
+			rf.acquireLocks("lastHeartBeat")
 			gap := time.Now().Sub(rf.lastHeartBeat)
-			//fmt.Printf("=== me = %d, diff = %v, timeout = %v, isTimeOut = %t, term = %d ===\n", rf.me, gap, electionTimeout, gap >= electionTimeout, rf.currentTerm)
+			rf.releaseLocks("lastHeartBeat")
+			
+			fmt.Printf("=== me = %d, diff = %v, timeout = %v, isTimeOut = %t, term = %d ===\n", rf.me, gap, electionTimeout, gap >= electionTimeout, rf.currentTerm)
+
 			if gap >= electionTimeout {
 				go rf.runLeaderElection()
 				//time.Sleep(1 * time.Second)

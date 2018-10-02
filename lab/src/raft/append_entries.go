@@ -1,7 +1,7 @@
 package raft
 
 import (
-	//"fmt"
+	"fmt"
 	"math"
 	"time"
 )
@@ -26,6 +26,7 @@ func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *Ap
 }
 
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
+	fmt.Println("received heartbeat from", args.Leader, "to", rf.me)
 	reply.Term = rf.currentTerm
 
 	//  Reply false if term < currentTerm (§5.1)
@@ -37,15 +38,22 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	rf.acquireLocks("leader")
 	rf.leader = args.Leader
 	rf.releaseLocks("leader")
+	
+	fmt.Println("=== before toFollower from", args.Leader, "to", rf.me)
 	rf.toFollower(args.Term)
+	fmt.Println("=== after toFollower from", args.Leader, "to", rf.me)
+
+	rf.acquireLocks("lastHeartBeat")
+	rf.lastHeartBeat = time.Now()
+	rf.releaseLocks("lastHeartBeat")
+	
+	fmt.Println("finished heartbeat from", args.Leader, "to", rf.me)
 
 	if len(args.Entries) == 0 {
-		rf.acquireLocks("lastHeartBeat")
-		rf.lastHeartBeat = time.Now()
-		rf.releaseLocks("lastHeartBeat")
 		reply.Success = true
 		return
 	} 
+
 
 	rf.acquireLocks("log")
 	//fmt.Printf("$$$ AppendEntries from %d to %d: log = %v $$$\n", args.Leader, rf.me, args.Entries)

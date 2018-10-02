@@ -1,6 +1,6 @@
 package raft
 
-import "fmt"
+// import "fmt"
 
 func (rf *Raft) retry(peer int, req *AppendEntriesArgs, res *AppendEntriesReply) {
 	ok := false
@@ -22,7 +22,7 @@ func (rf *Raft) replicate(replicateChan chan int, replies []*AppendEntriesReply)
 		lastLogTerm = lastLog.Term
 	}
 
-	fmt.Println("rf.log =", rf.log, "| rf.matchIndex =", rf.matchIndex, "| rf.nextIndex =", rf.nextIndex)
+	// fmt.Println("rf.log =", rf.log, "| rf.matchIndex =", rf.matchIndex, "| rf.nextIndex =", rf.nextIndex)
 	for i := range rf.peers {
 		if (i != rf.me) {
 			if rf.state != LEADER {
@@ -37,7 +37,7 @@ func (rf *Raft) replicate(replicateChan chan int, replies []*AppendEntriesReply)
 				Entries:          rf.log[rf.matchIndex[i]:rf.nextIndex[i]],
 				LeaderCommit:     rf.commitIndex,
 			}
-			fmt.Println("=== to replicate, leader =", rf.me, "| peer =", i, "| args =", args)
+			// fmt.Println("=== to replicate, leader =", rf.me, "| peer =", i, "| args =", args)
 
 			rf.retry(i, &args, replies[i])
 			replicateChan <- i
@@ -50,7 +50,7 @@ func (rf *Raft) countReplicas(replicateChan chan int, replies []*AppendEntriesRe
 	replicatedPeers := []int{rf.me}
 
 	for i := 1; i < len(replies); i++ {
-		fmt.Println("count replication", i)
+		// fmt.Println("count replication", i)
 		if rf.state != LEADER {
 			return
 		}
@@ -85,7 +85,7 @@ func (rf *Raft) countReplicas(replicateChan chan int, replies []*AppendEntriesRe
 		rf.acquireLocks("commitIndex")
 		rf.commitIndex = lastLog.Index
 		rf.releaseLocks("commitIndex")
-		fmt.Println("*** replicate for rf.me =", rf.me, "is done:", "rf.matchIndex =", rf.matchIndex, "| rf.nextIndex =", rf.nextIndex, "| rf.commitIndex =", rf.commitIndex)
+		// fmt.Println("*** replicate for rf.me =", rf.me, "is done:", "rf.matchIndex =", rf.matchIndex, "| rf.nextIndex =", rf.nextIndex, "| rf.commitIndex =", rf.commitIndex)
 	}
 
 	return

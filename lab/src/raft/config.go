@@ -368,7 +368,7 @@ func (cfg *config) nCommitted(index int) (int, interface{}) {
 		cfg.mu.Lock()
 		cmd1, ok := cfg.logs[i][index]
 		if len(cfg.logs[i]) > 1 {
-			fmt.Printf("=== test === server = %d, rf.log = %v, cmd1 = %d, ok = %t \n", i, cfg.logs[i], cmd1, ok)
+			// fmt.Printf("=== test === server = %d, rf.log = %v, cmd1 = %d, ok = %t \n", i, cfg.logs[i], cmd1, ok)
 		}
 		cfg.mu.Unlock()
 
@@ -468,7 +468,7 @@ func (cfg *config) one(cmd int, expectedServers int, retry bool) int {
 				time.Sleep(20 * time.Millisecond)
 			}
 			if retry == false {
-				fmt.Println("~~~ cfg.logs =", cfg.logs)
+				// fmt.Println("~~~ cfg.logs =", cfg.logs)
 				cfg.t.Fatalf("one(%v) failed to reach agreement", cmd)
 			}
 		} else {
