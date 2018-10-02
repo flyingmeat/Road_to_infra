@@ -50,6 +50,7 @@ func (rf *Raft) countReplicas(replicateChan chan int, replies []*AppendEntriesRe
 	replicatedPeers := []int{rf.me}
 
 	for i := 1; i < len(replies); i++ {
+		fmt.Println("count replication", i)
 		if rf.state != LEADER {
 			return
 		}

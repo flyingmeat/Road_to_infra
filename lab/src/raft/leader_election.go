@@ -1,7 +1,7 @@
 package raft
 
 import (
-	//"fmt"
+	"fmt"
 	"math/rand"
 	"time"
 )
@@ -28,7 +28,6 @@ func (rf *Raft) toLeader() {
 	rf.state = LEADER
 	rf.leader = rf.me
 	rf.currentTerm++  // Increment currentTerm
-	//fmt.Printf("@@@ rf.me = %d to leader, new term = %d @@@\n", rf.me, rf.currentTerm)
 
 	// clear states
 	rf.matchIndex = make([]int, len(rf.peers))
@@ -37,6 +36,7 @@ func (rf *Raft) toLeader() {
 	// send heartbeat
 	rf.sendHeartbeat()
 	rf.releaseLocks("state", "leader", "currentTerm", "matchIndex", "nextIndex")
+	fmt.Printf("@@@ rf.me = %d to leader, new term = %d @@@\n", rf.me, rf.currentTerm)
 }
 
 func (rf *Raft) vote(voteChan chan int, replies []*RequestVoteReply) {
@@ -155,7 +155,7 @@ func (rf *Raft) run() {
 			if isFirstRound {
 				rf.acquireLocks("votedFor")
 				rf.votedFor = -1
-				rf.acquireLocks("votedFor")
+				rf.releaseLocks("votedFor")
 				continue
 			}
 
