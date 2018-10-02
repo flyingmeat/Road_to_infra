@@ -18,6 +18,7 @@ package raft
 //
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -68,6 +69,7 @@ type Raft struct {
 	peers         []*labrpc.ClientEnd // RPC end points of all peers
 	persister     *Persister          // Object to hold this peer's persisted state
 	me            int                 // this peer's index into peers[]
+	mus           map[string]*sync.Mutex
 
   	// Your data here (2A, 2B, 2C).
   	// Look at the paper's Figure 2 for a description of what
@@ -81,6 +83,7 @@ type Raft struct {
   	// Volatile state on all servers
 	commitIndex   int
 	lastApplied   int
+	applyChan     chan ApplyMsg
 
 	// Volatile state on leaders
 	nextIndex     []int
@@ -96,9 +99,6 @@ type Raft struct {
 // return currentTerm and whether this server
 // believes it is the leader.
 func (rf *Raft) GetState() (int, bool) {
-
-	//var term int
-	//var isleader bool
 	// Your code here (2A).
 	return rf.currentTerm, rf.state == LEADER
 }
@@ -160,12 +160,24 @@ func (rf *Raft) readPersist(data []byte) {
 //
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	index := -1
-	term := -1
-	isLeader := true
 
 	// Your code here (2B).
+	term, isLeader := rf.GetState()
+	if !isLeader {
+		return index, term, isLeader
+	}
 
+	lastLog := getLastLog(rf.log)
+	if lastLog != nil {
+		index = lastLog.Index + 1
+	} else {
+		index = 1
+	}
 
+	entry := LogEntry{Index: index, Term: rf.currentTerm, Command: command}
+	rf.log = append(rf.log, entry)
+	fmt.Printf("### Start(cmd = %d): log = %v, index = %d ###\n", command, rf.log, index)
+	go rf.runRaplication()
 	return index, term, isLeader
 }
 
@@ -195,11 +207,25 @@ func Make(peers []*labrpc.ClientEnd, me int, persister *Persister, applyCh chan 
 	rf.peers = peers
 	rf.persister = persister
 	rf.me = me
-	rf.votedFor = -1
-	rf.state = ""
-	rf.leader = -1
+	rf.initLocks()
 
 	// Your initialization code here (2A, 2B, 2C).
+	// Persistent state on all servers
+	rf.votedFor = -1
+	rf.log = []LogEntry{}
+
+	// Volatile state on all servers
+	rf.commitIndex = 0
+	rf.lastApplied = 0
+	rf.applyChan = applyCh
+
+	// Volatile state on leaders
+	rf.matchIndex = make([]int, len(rf.peers))
+	rf.nextIndex = newNextIndex(len(rf.peers))
+
+	// Other states
+	rf.state = ""
+	rf.leader = -1
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())

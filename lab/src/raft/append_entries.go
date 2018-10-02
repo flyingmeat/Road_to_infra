@@ -1,7 +1,7 @@
 package raft
 
 import (
-	//"fmt"
+	"fmt"
 	"math"
 	"time"
 )
@@ -26,9 +26,7 @@ func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *Ap
 }
 
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
-	rf.mu.Lock()
-	defer rf.mu.Unlock()
-
+	fmt.Println("received heartbeat from", args.Leader, "to", rf.me)
 	reply.Term = rf.currentTerm
 
 	//  Reply false if term < currentTerm (§5.1)
@@ -37,18 +35,32 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		return
 	}
 
+	rf.acquireLocks("leader")
 	rf.leader = args.Leader
+	rf.releaseLocks("leader")
+	
+	fmt.Println("=== before toFollower from", args.Leader, "to", rf.me)
 	rf.toFollower(args.Term)
+	fmt.Println("=== after toFollower from", args.Leader, "to", rf.me)
+
+	rf.acquireLocks("lastHeartBeat")
+	rf.lastHeartBeat = time.Now()
+	rf.releaseLocks("lastHeartBeat")
+	
+	fmt.Println("finished heartbeat from", args.Leader, "to", rf.me)
 
 	if len(args.Entries) == 0 {
-		rf.lastHeartBeat = time.Now()
 		reply.Success = true
 		return
 	} 
 
+
+	rf.acquireLocks("log")
+	//fmt.Printf("$$$ AppendEntries from %d to %d: log = %v $$$\n", args.Leader, rf.me, args.Entries)
 	// Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
 	hasPrevLog := len(rf.log) >= args.PrevLogIndex + 1
-	if !hasPrevLog || rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
+	if hasPrevLog && rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
+		rf.releaseLocks("log")
 		reply.Success = false
 		return
 	}
@@ -57,6 +69,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	// delete the existing entry and all that follow it (§5.3)
 	var lastSameIndex int
 	for _, leaderEntry := range args.Entries {
+		//fmt.Println("leaderEntry.Index =", leaderEntry.Index, "len(rf.log =", len(rf.log))
 		if leaderEntry.Index <= len(rf.log) {
 			if leaderEntry.Term != rf.log[leaderEntry.Index - 1].Term {
 				rf.log = rf.log[:leaderEntry.Index - 1]
@@ -66,18 +79,30 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		}
 	}
 	// Append any new entries not already in the log
-	rf.log = append(rf.log, args.Entries[lastSameIndex - 1:]...)
+	//fmt.Printf("lastSameIndex = %d, args.Entries = %v\n", lastSameIndex, args.Entries)
+	rf.log = append(rf.log, args.Entries[lastSameIndex:]...)
+	lastNewEntry := getLastLog(args.Entries)
+	//fmt.Printf("rf.me = %d, rf.log = %v\n", rf.me, rf.log)
+	rf.releaseLocks("log")
 
+	rf.acquireLocks("commitIndex", "lastApplied")
 	// If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
 	if (args.LeaderCommit > rf.commitIndex) {
 		lastNewEntryIndex := -1
-		lastNewEntry := getLastLog(args.Entries)
 		if lastNewEntry != nil {
 			lastNewEntryIndex = lastNewEntry.Index
 		}
 		rf.commitIndex = int(math.Min(float64(args.LeaderCommit), float64(lastNewEntryIndex)))
-		// TODO(ling): apply the messages between lastApplied and commitIndex
+	}
+
+	// apply the messages between lastApplied and commitIndex
+	if rf.commitIndex > rf.lastApplied {
+		for i := rf.lastApplied + 1; i <= rf.commitIndex; i++ {
+			rf.applyChan <- ApplyMsg{true, lastNewEntry.Command, lastNewEntry.Index}
+		}
+		rf.lastApplied = rf.commitIndex
 	}
 
 	reply.Success = true
+	rf.releaseLocks("commitIndex", "lastApplied")
 }
