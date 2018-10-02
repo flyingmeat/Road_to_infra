@@ -73,13 +73,17 @@ func (rf *Raft) countReplicas(replicateChan chan int, replies []*AppendEntriesRe
 	if (isMajority && rf.state == LEADER) {
 		lastLog := getLastLog(rf.log)
 		for peer := range replicatedPeers {
+			rf.acquireLocks("matchIndex", "nextIndex")
 			rf.matchIndex[peer] = lastLog.Index
 			rf.nextIndex[peer] = lastLog.Index + 1
+			rf.releaseLocks("matchIndex", "nextIndex")
 		}
 		for i := rf.commitIndex + 1; i <= lastLog.Index; i++ {
 			rf.applyChan <- ApplyMsg{true, lastLog.Command, i}
 		}
+		rf.acquireLocks("commitIndex")
 		rf.commitIndex = lastLog.Index
+		rf.releaseLocks("commitIndex")
 		fmt.Println("*** replicate for rf.me =", rf.me, "is done:", "rf.matchIndex =", rf.matchIndex, "| rf.nextIndex =", rf.nextIndex, "| rf.commitIndex =", rf.commitIndex)
 	}
 

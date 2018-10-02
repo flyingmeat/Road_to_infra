@@ -56,9 +56,6 @@ func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *Reques
 // example RequestVote RPC handler.
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (2A, 2B).
-	rf.mu.Lock()
-	defer rf.mu.Unlock()
-
 	reply.Term = rf.currentTerm
 	reply.VoteGranted = false
 
@@ -85,7 +82,10 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 
 		//fmt.Printf("*** localLastLog = %v, local log = %v ***\n", localLastLog, rf.log)
 		if isLogUpToDate {
+			rf.acquireLocks("votedFor")
 			rf.votedFor = args.CandidateId
+			rf.releaseLocks("votedFor")
+
 			reply.VoteGranted = true
 			return
 		}

@@ -7,19 +7,24 @@ import (
 )
 
 func (rf *Raft) toCandidate() {
+	rf.acquireLocks("state", "votedFor")
 	//fmt.Printf("@@@ rf.me = %d to candicate @@@\n", rf.me)
 	rf.state = CANDIDATE
 	rf.votedFor = rf.me  // Vote for self
+	rf.releaseLocks("state", "votedFor")
 }
 
 func (rf *Raft) toFollower(currentTerm int) {
+	rf.acquireLocks("state", "currentTerm", "votedFor")
 	//fmt.Printf("@@@ rf.me = %d to follower, term = %d @@@\n", rf.me, currentTerm)
 	rf.state = FOLLOWER
 	rf.currentTerm = currentTerm
 	rf.votedFor = -1
+	rf.releaseLocks("state", "currentTerm", "votedFor")
 }
 
 func (rf *Raft) toLeader() {
+	rf.acquireLocks("state", "leader", "currentTerm", "matchIndex", "nextIndex")
 	rf.state = LEADER
 	rf.leader = rf.me
 	rf.currentTerm++  // Increment currentTerm
@@ -31,6 +36,7 @@ func (rf *Raft) toLeader() {
 
 	// send heartbeat
 	rf.sendHeartbeat()
+	rf.releaseLocks("state", "leader", "currentTerm", "matchIndex", "nextIndex")
 }
 
 func (rf *Raft) vote(voteChan chan int, replies []*RequestVoteReply) {
@@ -147,7 +153,9 @@ func (rf *Raft) run() {
 
 			isFirstRound = !isFirstRound
 			if isFirstRound {
+				rf.acquireLocks("votedFor")
 				rf.votedFor = -1
+				rf.acquireLocks("votedFor")
 				continue
 			}
 

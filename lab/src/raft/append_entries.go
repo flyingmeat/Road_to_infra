@@ -26,9 +26,6 @@ func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *Ap
 }
 
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
-	rf.mu.Lock()
-	defer rf.mu.Unlock()
-
 	reply.Term = rf.currentTerm
 
 	//  Reply false if term < currentTerm (§5.1)
@@ -37,20 +34,25 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		return
 	}
 
+	rf.acquireLocks("leader")
 	rf.leader = args.Leader
+	rf.releaseLocks("leader")
 	rf.toFollower(args.Term)
 
 	if len(args.Entries) == 0 {
+		rf.acquireLocks("lastHeartBeat")
 		rf.lastHeartBeat = time.Now()
+		rf.releaseLocks("lastHeartBeat")
 		reply.Success = true
 		return
 	} 
 
-
+	rf.acquireLocks("log")
 	//fmt.Printf("$$$ AppendEntries from %d to %d: log = %v $$$\n", args.Leader, rf.me, args.Entries)
 	// Reply false if log doesn’t contain an entry at prevLogIndex whose term matches prevLogTerm (§5.3)
 	hasPrevLog := len(rf.log) >= args.PrevLogIndex + 1
 	if hasPrevLog && rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
+		rf.releaseLocks("log")
 		reply.Success = false
 		return
 	}
@@ -73,7 +75,9 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	rf.log = append(rf.log, args.Entries[lastSameIndex:]...)
 	lastNewEntry := getLastLog(args.Entries)
 	//fmt.Printf("rf.me = %d, rf.log = %v\n", rf.me, rf.log)
+	rf.releaseLocks("log")
 
+	rf.acquireLocks("commitIndex", "lastApplied")
 	// If leaderCommit > commitIndex, set commitIndex = min(leaderCommit, index of last new entry)
 	if (args.LeaderCommit > rf.commitIndex) {
 		lastNewEntryIndex := -1
@@ -92,4 +96,5 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	}
 
 	reply.Success = true
+	rf.releaseLocks("commitIndex", "lastApplied")
 }
